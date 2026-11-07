@@ -13,7 +13,7 @@ Lazarus and Free Pascal.
 - KeyTips
 - Light and dark look, restylable through `--ribbon-*` CSS variables
 
-It builds with FPC 3.2.2 and Lazarus 4.8 for i386-win32 and x86_64-win64. It needs Fresnel with the fixes in `docs\library-changes`.
+It builds with FPC 3.2.2 and Lazarus 4.8 for i386-win32 and x86_64-win64, and with FPC 3.2.2 and Lazarus 4.4 for x86_64-linux. It needs Fresnel with the fixes in `docs\library-changes`.
 
 ## Use
 
@@ -67,5 +67,9 @@ build.cmd
 ```
 
 This builds the package, tests and demo for both targets and runs the tests. It must end with
-`BUILD OK, TESTS PASSED`. The demo is `out\<target>\ribbondemo.exe`. It draws its own title bar on Windows, see `demo\ribbonframe.pas`. How the project is worked on is in
+`BUILD OK, TESTS PASSED`. The demo is `out\<target>\ribbondemo.exe`. It draws its own title bar on Windows, see `demo\ribbonframe.pas`.
+
+On Linux, run `./build.sh` instead. It needs `lazbuild`, FPC and the GTK3 development files, and looks for Fresnel next
+to this repository or in `FRESNEL_DIR`. Start the demo from its folder with `LD_LIBRARY_PATH=. ./ribbondemo`. It uses the
+title bar of the system there. How the project is worked on is in
 `docs\claude-workflow.md`.

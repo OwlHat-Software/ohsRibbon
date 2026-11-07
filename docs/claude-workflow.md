@@ -75,7 +75,8 @@ The answered questions are in `docs\implementation-plan.md`; none is open. Q-P04
 
 ## 5. One build script as the gate
 
-`build.cmd` is the only way to build, locally and in CI. It calls lazbuild with
+`build.cmd` is the only way to build on Windows, locally and in CI; `build.sh` does the same for x86_64-linux and
+ends with the same line. `build.cmd` calls lazbuild with
 `--pcp=C:\lazarus\config_lazarus`. The paths can be set through `RIBBON_LAZARUS_DIR` and `FRESNEL_DIR`. In one run,
 for i386-win32 and x86_64-win64, it:
 

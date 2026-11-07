@@ -17,5 +17,5 @@ MoSCoW priority: M must, S should, C could. Scope is set by decision 0001.
 | RB-031 | M | Contextual tabs shown and hidden by the application |
 | RB-040 | M | KeyTips: key badges on two levels, with unique keys |
 | RB-050 | M | Neutral light and dark look, restylable through CSS variables |
-| RB-NFR-100 | M | Builds and runs on i386-win32 and x86_64-win64 with FPC 3.2.2 and Lazarus 4.8 |
+| RB-NFR-100 | M | Builds and runs on i386-win32 and x86_64-win64 with FPC 3.2.2 and Lazarus 4.8, and on x86_64-linux with FPC 3.2.2 and Lazarus 4.4 |
 | RB-NFR-101 | M | Sizing and KeyTip logic live in `src\model`, free of Fresnel and LCL, with unit tests |

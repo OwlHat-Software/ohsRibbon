@@ -18,16 +18,20 @@ interface
 uses
   Classes, SysUtils, Fresnel.DOM, Fresnel.Forms, Fresnel.Controls, Fresnel.Classes,
   Fresnel.Renderer, Fresnel.AnimationTimer, Fresnel.Menus, Fresnel.Images, FCL.Events,
-  Fresnel.App, Fresnel.Win32, ohsribbon.model.sizing, ohsribbon.ui.ribbon, ribbonshot, ribbonframe;
+  Fresnel.App, ohsribbon.model.sizing, ohsribbon.ui.ribbon, ribbonshot
+  {$IFDEF MSWINDOWS}, Fresnel.Win32, ribbonframe{$ENDIF};
 
 type
   TMainForm = class(TFresnelForm)
   private
     FRibbon: TRibbon;
+    {$IFDEF MSWINDOWS}
+    // Windows only: elsewhere the demo keeps the title bar of the system.
     FFrame: TWindowFrame;
     FTitleBar: TDiv;
     FTitleIcon: TDiv;
     FFrameButtons: array[TFrameButton] of TDiv;
+    {$ENDIF}
     FStatus: TLabel;
     FTimer: TFresnelAnimationTimer;
     FTicks: Integer;
@@ -37,10 +41,12 @@ type
     function NewMenu(const aCaptions: array of string): TPopupMenu;
     function AddIconButton(aGroup: TRibbonGroup; const aCaption, aIcon: string;
       aSize: TRibbonItemSize = risLarge): TRibbonItem;
+    {$IFDEF MSWINDOWS}
     function AddGlyph(aParent: TFresnelElement; const aClass: string): TDiv;
     procedure BuildTitleBar(aParent: TFresnelElement);
     function FrameHitTest(aX, aY: Integer): TFrameHit;
     procedure FrameChange;
+    {$ENDIF}
     procedure BuildRibbon;
     procedure ItemClick(aEvent: TAbstractEvent);
     procedure MenuClick(Sender: TObject);
@@ -61,6 +67,7 @@ var
 
 implementation
 
+{$IFDEF MSWINDOWS}
 const
   cFrameCSS =
     ' .frame-bar { --frame-bg: #33658a; --frame-text: #ffffff; --frame-hover: #4a7ca1; --frame-pressed: #5b8bae;'
@@ -91,6 +98,7 @@ const
     +' background-color: var(--frame-text); }'
     +' .frame-cross1 { transform: rotate(45deg); }'
     +' .frame-cross2 { transform: rotate(-45deg); }';
+{$ENDIF}
 
 constructor TMainForm.CreateNew(aOwner: TComponent);
 var
@@ -110,10 +118,12 @@ begin
   else
     Application.ColorScheme:=fcsLight;
   Stylesheet.Text:='body { display: flex; flex-direction: column; margin: 0; height: 100%; }'
-    +' .document { flex-grow: 1; padding: 16px; }'+cFrameCSS;
+    +' .document { flex-grow: 1; padding: 16px; }'{$IFDEF MSWINDOWS}+cFrameCSS{$ENDIF};
   lBody:=TBody.Create(Self);
   lBody.Parent:=Self;
+  {$IFDEF MSWINDOWS}
   BuildTitleBar(lBody);
+  {$ENDIF}
   FRibbon:=TRibbon.Create(Self);
   FRibbon.Parent:=lBody;
   lDocument:=TDiv.Create(Self);
@@ -128,7 +138,9 @@ end;
 
 destructor TMainForm.Destroy;
 begin
+  {$IFDEF MSWINDOWS}
   FreeAndNil(FFrame);
+  {$ENDIF}
   FreeAndNil(FTimer);
   inherited Destroy;
 end;
@@ -189,6 +201,7 @@ begin
     Result.Image:=lImage;
 end;
 
+{$IFDEF MSWINDOWS}
 function TMainForm.AddGlyph(aParent: TFresnelElement; const aClass: string): TDiv;
 begin
   Result:=TDiv.Create(Self);
@@ -285,6 +298,7 @@ begin
       AddGlyph(lButton,'frame-box');
   end;
 end;
+{$ENDIF}
 
 procedure TMainForm.BuildRibbon;
 var
@@ -424,6 +438,7 @@ procedure TMainForm.Show;
 var
   lValue: string;
 begin
+  {$IFDEF MSWINDOWS}
   if FFrame=nil then
   begin
     // Asking for WSForm creates the window, still hidden, so it never shows the old frame.
@@ -431,6 +446,7 @@ begin
     FFrame.OnHitTest:=@FrameHitTest;
     FFrame.OnChange:=@FrameChange;
   end;
+  {$ENDIF}
   inherited Show;
   if (FCaptureFile='') or (FTimer<>nil) then
     Exit;
