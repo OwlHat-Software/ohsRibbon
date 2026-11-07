@@ -1,2 +1,72 @@
 # ohsRibbon
-Fresnel Ribbon Component
+
+A ribbon component for [Fresnel](https://gitlab.com/OwlHatSoftware/fresnel), the CSS-based UI library for
+Lazarus and Free Pascal.
+
+- Tabs with captioned groups; large, medium and small buttons
+- Toggle, dropdown and split buttons; group dialog launcher
+- Application menu button and quick access toolbar
+- Collapse and expand, with the panel on demand while collapsed
+- Adaptive sizing: groups step down and collapse into a dropdown as the window narrows
+- Galleries with paging and an expanded view
+- Contextual tabs
+- KeyTips
+- Light and dark look, restylable through `--ribbon-*` CSS variables
+
+It builds with FPC 3.2.2 and Lazarus 4.8 for i386-win32 and x86_64-win64.
+
+## Use
+
+Add the package `src\ohsribbon.lpk` to your project, then build the ribbon from code:
+
+```pascal
+uses ohsribbon.model.sizing, ohsribbon.ui.ribbon;
+
+Ribbon:=TRibbon.Create(Self);
+Ribbon.Parent:=Body;
+Ribbon.ApplicationMenu:=FileMenu;
+Ribbon.AddQuickButton('Save',@SaveClick);
+
+Tab:=Ribbon.AddTab('Home');
+Group:=Tab.AddGroup('Clipboard');
+Group.AddButton('Paste',risLarge,@PasteClick).Image:=PasteIcon;
+Group.AddButton('Cut',risMedium,@CutClick);
+Group.AddToggle('Bold',risSmall,@BoldClick);
+Group.AddDropdown('Size',risMedium,SizeMenu);
+Group.AddSplitButton('Find',risLarge,@FindClick,FindMenu);
+Group.OnDialogLauncher:=@ClipboardDialogClick;
+
+Gallery:=Tab.AddGroup('Styles').AddGallery(4);
+Gallery.AddItem('Normal',NormalIcon);
+Gallery.OnSelect:=@StyleSelect;
+
+Format:=Ribbon.AddContextualTab('Picture tools','Format');
+Ribbon.SetContextVisible('Picture tools',True);
+```
+
+To restyle it, override the variables in your stylesheet, for both the ribbon and its popups:
+
+```css
+ribbon, .ribbon-popup { --ribbon-accent: #7a3e9d; }
+```
+
+## Keys
+
+F6 starts KeyTips (`TRibbon.KeyTipKey`), Escape goes back a level. Alt also starts them on a backend that delivers
+it, which the Fresnel Win32 backend does not do yet: see `docs\library-changes\FC-01-win32-alt-key.md`.
+
+## Limits
+
+- The ribbon is built from code. It has no component palette entry or form designer support.
+- Full keyboard navigation with the arrow keys is not there; KeyTips are the keyboard route.
+- Texts in the ribbon itself are the captions you pass in, apart from the default application button caption `File`.
+
+## Build
+
+```bash
+build.cmd
+```
+
+This builds the package, tests and demo for both targets and runs the tests. It must end with
+`BUILD OK, TESTS PASSED`. The demo is `out\<target>\ribbondemo.exe`. How the project is worked on is in
+`docs\claude-workflow.md`.
