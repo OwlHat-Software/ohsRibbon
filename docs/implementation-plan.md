@@ -11,7 +11,7 @@
 
 ## Changes needed in Fresnel
 
-FC-01 to FC-03 are applied on the Fresnel `main` branch, which is pushed to the fork on GitLab, and the ribbon relies on them. FC-04 is applied as well, but only local until that branch is pushed; only the demo relies on it.
+All four are applied on the Fresnel `main` branch, which is pushed to the fork on GitLab. The ribbon relies on FC-01 to FC-03, and the demo on FC-04.
 
 | Spec | Problem | Fresnel commit |
 |---|---|---|
