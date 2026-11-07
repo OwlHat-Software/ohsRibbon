@@ -11,13 +11,14 @@
 
 ## Changes needed in Fresnel
 
-All three are applied on the Fresnel `main` branch, which is pushed to the fork on GitLab, and the ribbon relies on them.
+FC-01 to FC-03 are applied on the Fresnel `main` branch, which is pushed to the fork on GitLab, and the ribbon relies on them. FC-04 is open; only the demo works around it.
 
 | Spec | Problem | Fresnel commit |
 |---|---|---|
 | [FC-01](library-changes/FC-01-win32-alt-key.md) | The Win32 backend does not deliver Alt | `8370b3d5` |
 | [FC-02](library-changes/FC-02-textbutton-clear-caption.md) | Clearing the caption of a button with an image raises | `02e3ef37` |
 | [FC-03](library-changes/FC-03-win32-function-keys.md) | The Win32 backend reports F2 to F24 with the wrong key | `8370b3d5` |
+| [FC-04](library-changes/FC-04-win32-form-caption.md) | The Win32 backend does not set the window title | Open |
 
 ## Answered questions
 

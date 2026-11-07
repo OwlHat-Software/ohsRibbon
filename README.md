@@ -67,5 +67,5 @@ build.cmd
 ```
 
 This builds the package, tests and demo for both targets and runs the tests. It must end with
-`BUILD OK, TESTS PASSED`. The demo is `out\<target>\ribbondemo.exe`. How the project is worked on is in
+`BUILD OK, TESTS PASSED`. The demo is `out\<target>\ribbondemo.exe`. It draws its own title bar on Windows, see `demo\ribbonframe.pas`. How the project is worked on is in
 `docs\claude-workflow.md`.

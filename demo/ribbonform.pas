@@ -18,12 +18,16 @@ interface
 uses
   Classes, SysUtils, Fresnel.DOM, Fresnel.Forms, Fresnel.Controls, Fresnel.Classes,
   Fresnel.Renderer, Fresnel.AnimationTimer, Fresnel.Menus, Fresnel.Images, FCL.Events,
-  Fresnel.App, ohsribbon.model.sizing, ohsribbon.ui.ribbon, ribbonshot;
+  Fresnel.App, Fresnel.Win32, ohsribbon.model.sizing, ohsribbon.ui.ribbon, ribbonshot, ribbonframe;
 
 type
   TMainForm = class(TFresnelForm)
   private
     FRibbon: TRibbon;
+    FFrame: TWindowFrame;
+    FTitleBar: TDiv;
+    FTitleIcon: TDiv;
+    FFrameButtons: array[TFrameButton] of TDiv;
     FStatus: TLabel;
     FTimer: TFresnelAnimationTimer;
     FTicks: Integer;
@@ -33,6 +37,10 @@ type
     function NewMenu(const aCaptions: array of string): TPopupMenu;
     function AddIconButton(aGroup: TRibbonGroup; const aCaption, aIcon: string;
       aSize: TRibbonItemSize = risLarge): TRibbonItem;
+    function AddGlyph(aParent: TFresnelElement; const aClass: string): TDiv;
+    procedure BuildTitleBar(aParent: TFresnelElement);
+    function FrameHitTest(aX, aY: Integer): TFrameHit;
+    procedure FrameChange;
     procedure BuildRibbon;
     procedure ItemClick(aEvent: TAbstractEvent);
     procedure MenuClick(Sender: TObject);
@@ -53,6 +61,37 @@ var
 
 implementation
 
+const
+  cFrameCSS =
+    ' .frame-bar { --frame-bg: #33658a; --frame-text: #ffffff; --frame-hover: #4a7ca1; --frame-pressed: #5b8bae;'
+    +' display: flex; flex-direction: row; align-items: center; flex-shrink: 0; height: 32px;'
+    +' background-color: var(--frame-bg); color: var(--frame-text); font-size: 12px; }'
+    +' .frame-bar.frame-inactive { --frame-bg: #7d8c98; }'
+    +' @media (prefers-color-scheme: dark) {'
+    +' .frame-bar { --frame-bg: #1b1b1c; --frame-text: #e6e6e6; --frame-hover: #3d3d40; --frame-pressed: #4a4a4e; }'
+    +' .frame-bar.frame-inactive { --frame-bg: #2b2b2c; --frame-text: #a6a6a6; } }'
+    +' .frame-icon { flex-shrink: 0; align-self: stretch; width: 34px; display: flex;'
+    +' align-items: center; justify-content: center; }'
+    +' .frame-logo { width: 14px; height: 14px; border-radius: 3px; background-color: var(--frame-text); }'
+    +' .frame-title { flex-grow: 1; min-width: 0; white-space: nowrap; overflow: hidden; }'
+    +' .frame-button { position: relative; flex-shrink: 0; width: 46px; height: 32px; }'
+    +' .frame-button.frame-hot { background-color: var(--frame-hover); }'
+    +' .frame-button.frame-down { background-color: var(--frame-pressed); }'
+    +' .frame-button.frame-close.frame-hot { background-color: #c42b2b; }'
+    +' .frame-button.frame-close.frame-down { background-color: #a82424; }'
+    +' .frame-glyph { position: absolute; }'
+    +' .frame-line { left: 18px; top: 16px; width: 10px; height: 1px; background-color: var(--frame-text); }'
+    +' .frame-box { left: 18px; top: 11px; width: 10px; height: 10px; box-sizing: border-box;'
+    +' border: 1px solid var(--frame-text); }'
+    +' .frame-back { left: 20px; top: 11px; width: 8px; height: 8px; box-sizing: border-box;'
+    +' border-top: 1px solid var(--frame-text); border-right: 1px solid var(--frame-text); }'
+    +' .frame-front { left: 18px; top: 13px; width: 8px; height: 8px; box-sizing: border-box;'
+    +' border: 1px solid var(--frame-text); }'
+    +' .frame-cross1, .frame-cross2 { left: 17px; top: 16px; width: 12px; height: 1px;'
+    +' background-color: var(--frame-text); }'
+    +' .frame-cross1 { transform: rotate(45deg); }'
+    +' .frame-cross2 { transform: rotate(-45deg); }';
+
 constructor TMainForm.CreateNew(aOwner: TComponent);
 var
   lBody: TBody;
@@ -71,9 +110,10 @@ begin
   else
     Application.ColorScheme:=fcsLight;
   Stylesheet.Text:='body { display: flex; flex-direction: column; margin: 0; height: 100%; }'
-    +' .document { flex-grow: 1; padding: 16px; }';
+    +' .document { flex-grow: 1; padding: 16px; }'+cFrameCSS;
   lBody:=TBody.Create(Self);
   lBody.Parent:=Self;
+  BuildTitleBar(lBody);
   FRibbon:=TRibbon.Create(Self);
   FRibbon.Parent:=lBody;
   lDocument:=TDiv.Create(Self);
@@ -88,6 +128,7 @@ end;
 
 destructor TMainForm.Destroy;
 begin
+  FreeAndNil(FFrame);
   FreeAndNil(FTimer);
   inherited Destroy;
 end;
@@ -146,6 +187,103 @@ begin
   lImage:=Icon(aIcon);
   if lImage<>nil then
     Result.Image:=lImage;
+end;
+
+function TMainForm.AddGlyph(aParent: TFresnelElement; const aClass: string): TDiv;
+begin
+  Result:=TDiv.Create(Self);
+  Result.AddCSSClass('frame-glyph');
+  Result.AddCSSClass(aClass);
+  Result.Parent:=aParent;
+end;
+
+procedure TMainForm.BuildTitleBar(aParent: TFresnelElement);
+var
+  lLogo: TDiv;
+  lTitle: TLabel;
+  b: TFrameButton;
+begin
+  FTitleBar:=TDiv.Create(Self);
+  FTitleBar.AddCSSClass('frame-bar');
+  FTitleBar.Parent:=aParent;
+  FTitleIcon:=TDiv.Create(Self);
+  FTitleIcon.AddCSSClass('frame-icon');
+  FTitleIcon.Parent:=FTitleBar;
+  lLogo:=TDiv.Create(Self);
+  lLogo.AddCSSClass('frame-logo');
+  lLogo.Parent:=FTitleIcon;
+  lTitle:=TLabel.Create(Self);
+  lTitle.AddCSSClass('frame-title');
+  lTitle.Caption:=Caption;
+  lTitle.Parent:=FTitleBar;
+  for b:=Low(TFrameButton) to High(TFrameButton) do
+  begin
+    FFrameButtons[b]:=TDiv.Create(Self);
+    FFrameButtons[b].AddCSSClass('frame-button');
+    FFrameButtons[b].Parent:=FTitleBar;
+  end;
+  AddGlyph(FFrameButtons[fhMinimize],'frame-line');
+  AddGlyph(FFrameButtons[fhMaximize],'frame-box');
+  FFrameButtons[fhClose].AddCSSClass('frame-close');
+  AddGlyph(FFrameButtons[fhClose],'frame-cross1');
+  AddGlyph(FFrameButtons[fhClose],'frame-cross2');
+end;
+
+function TMainForm.FrameHitTest(aX, aY: Integer): TFrameHit;
+var
+  lElement: TFresnelElement;
+  b: TFrameButton;
+begin
+  Result:=fhClient;
+  lElement:=GetElementAt(aX,aY);
+  while lElement<>nil do
+  begin
+    for b:=Low(TFrameButton) to High(TFrameButton) do
+      if lElement=FFrameButtons[b] then
+        Exit(b);
+    if lElement=FTitleIcon then
+      Exit(fhIcon);
+    if lElement=FTitleBar then
+      Exit(fhCaption);
+    lElement:=lElement.Parent;
+  end;
+end;
+
+procedure TMainForm.FrameChange;
+
+  procedure SetClass(aElement: TFresnelElement; const aClass: string; aOn: Boolean);
+  begin
+    if aOn=aElement.HasCSSClass(aClass) then
+      Exit;
+    if aOn then
+      aElement.AddCSSClass(aClass)
+    else
+      aElement.RemoveCSSClass(aClass);
+  end;
+
+var
+  b: TFrameButton;
+  lButton: TDiv;
+begin
+  SetClass(FTitleBar,'frame-inactive',not FFrame.Active);
+  for b:=Low(TFrameButton) to High(TFrameButton) do
+  begin
+    SetClass(FFrameButtons[b],'frame-hot',FFrame.Hot=b);
+    SetClass(FFrameButtons[b],'frame-down',FFrame.Pressed=b);
+  end;
+  lButton:=FFrameButtons[fhMaximize];
+  if FFrame.Maximized<>(lButton.NodeCount=2) then
+  begin
+    while lButton.NodeCount>0 do
+      lButton.Nodes[0].Free;
+    if FFrame.Maximized then
+    begin
+      AddGlyph(lButton,'frame-back');
+      AddGlyph(lButton,'frame-front');
+    end
+    else
+      AddGlyph(lButton,'frame-box');
+  end;
 end;
 
 procedure TMainForm.BuildRibbon;
@@ -286,6 +424,15 @@ procedure TMainForm.Show;
 var
   lValue: string;
 begin
+  if FFrame=nil then
+  begin
+    // Asking for WSForm creates the window, still hidden, so it never shows the old frame.
+    FFrame:=TWindowFrame.Create(TWin32WSForm(WSForm).Window);
+    FFrame.OnHitTest:=@FrameHitTest;
+    FFrame.OnChange:=@FrameChange;
+    // For the taskbar. The Win32 backend does not set a form's caption yet (FC-04).
+    FFrame.SetTitle(Caption);
+  end;
   inherited Show;
   if (FCaptureFile='') or (FTimer<>nil) then
     Exit;
