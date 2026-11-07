@@ -47,6 +47,9 @@
   <CompilerOptions>
     <Version Value="11"/>
     <PathDelim Value="\"/>
+    <Conditionals Value="// Find libsk4d.so next to the program, wherever it is started from.
+if TargetOS='linux' then
+  CustomOptions := '-k-rpath -k$ORIGIN';"/>
     <Target>
       <Filename Value="..\out\$(TargetCPU)-$(TargetOS)\ribbondemo"/>
     </Target>

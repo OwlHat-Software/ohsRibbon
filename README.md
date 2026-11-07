@@ -70,6 +70,6 @@ This builds the package, tests and demo for both targets and runs the tests. It 
 `BUILD OK, TESTS PASSED`. The demo is `out\<target>\ribbondemo.exe`. It draws its own title bar on Windows, see `demo\ribbonframe.pas`.
 
 On Linux, run `./build.sh` instead. It needs `lazbuild`, FPC and the GTK3 development files, and looks for Fresnel next
-to this repository or in `FRESNEL_DIR`. Start the demo from its folder with `LD_LIBRARY_PATH=. ./ribbondemo`. It uses the
-title bar of the system there. How the project is worked on is in
+to this repository or in `FRESNEL_DIR`. The demo is `out/x86_64-linux/ribbondemo`, which finds `libsk4d.so` next to itself.
+It uses the title bar of the system there. How the project is worked on is in
 `docs\claude-workflow.md`.

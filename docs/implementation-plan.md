@@ -11,7 +11,7 @@
 
 ## Changes needed in Fresnel
 
-All five are applied on the Fresnel `main` branch, which is pushed to the fork on GitLab. The ribbon relies on FC-01 to FC-03 and FC-05, and the demo on FC-04.
+All six are applied on the Fresnel `main` branch, which is pushed to the fork on GitLab. The ribbon relies on FC-01 to FC-03 and FC-05, and the demo on FC-04 and FC-06.
 
 | Spec | Problem | Fresnel commit |
 |---|---|---|
@@ -20,6 +20,7 @@ All five are applied on the Fresnel `main` branch, which is pushed to the fork o
 | [FC-03](library-changes/FC-03-win32-function-keys.md) | The Win32 backend reports F2 to F24 with the wrong key | `8370b3d5` |
 | [FC-04](library-changes/FC-04-win32-form-caption.md) | The Win32 backend does not set the window title | `f8412351` |
 | [FC-05](library-changes/FC-05-gtk3-alt-key.md) | The GTK3 backend does not deliver Alt | `8f655c74` |
+| [FC-06](library-changes/FC-06-gtk3-wayland-title-bar.md) | Fresnel windows have no title bar on Wayland | `c8794a66` |
 
 ## Answered questions
 
