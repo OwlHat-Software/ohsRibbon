@@ -57,7 +57,7 @@ type
     procedure ToggleMaximize; override;
     procedure Close; override;
     procedure BeginMove(aDeltaX, aDeltaY: TFresnelLength); override;
-    procedure ShowMenu; override;
+    function ShowMenu: Boolean; override;
   end;
 
 const
@@ -223,10 +223,11 @@ begin
   // Windows does this: the bar is reported as a caption.
 end;
 
-procedure TWin32Frame.ShowMenu;
+function TWin32Frame.ShowMenu: Boolean;
 var
   lPoint: TPoint;
 begin
+  Result:=True;
   lPoint.X:=0;
   lPoint.Y:=GetSystemMetrics(SM_CYCAPTION);
   ClientToScreen(FWindow,lPoint);
@@ -352,7 +353,7 @@ type
     procedure ToggleMaximize; override;
     procedure Close; override;
     procedure BeginMove(aDeltaX, aDeltaY: TFresnelLength); override;
-    procedure ShowMenu; override;
+    function ShowMenu: Boolean; override;
   end;
 
 function FrameWindowState(aWidget: PGtkWidget; aEvent: PGdkEvent; aData: gpointer): gboolean; cdecl;
@@ -440,17 +441,18 @@ begin
   gdk_event_free(lEvent);
 end;
 
-procedure TGtk3Frame.ShowMenu;
+function TGtk3Frame.ShowMenu: Boolean;
 var
   lEvent: PGdkEvent;
 begin
+  Result:=False;
   if FWindow=nil then
     Exit;
   lEvent:=gtk_get_current_event();
   if lEvent=nil then
     Exit;
-  // Not every window manager has this menu; without one nothing happens.
-  gdk_window_show_window_menu(gtk_widget_get_window(PGtkWidget(FWindow)),lEvent);
+  // Not every window manager has this menu.
+  Result:=gdk_window_show_window_menu(gtk_widget_get_window(PGtkWidget(FWindow)),lEvent);
   gdk_event_free(lEvent);
 end;
 

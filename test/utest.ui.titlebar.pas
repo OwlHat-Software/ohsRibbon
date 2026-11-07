@@ -17,6 +17,7 @@ type
     function GetPressed: TTitleBarHit; override;
   public
     IsActive, IsMaximized: Boolean;
+    SystemHasMenu: Boolean;
     HotButton, PressedButton: TTitleBarHit;
     Minimizes, Toggles, Closes, Moves, Menus: Integer;
     MoveDeltaX, MoveDeltaY: TFresnelLength;
@@ -24,7 +25,7 @@ type
     procedure ToggleMaximize; override;
     procedure Close; override;
     procedure BeginMove(aDeltaX, aDeltaY: TFresnelLength); override;
-    procedure ShowMenu; override;
+    function ShowMenu: Boolean; override;
   end;
 
   TTestTitleBar = class(TCustomTestFresnelCSS)
@@ -47,6 +48,8 @@ type
     procedure TestDoubleClickCaptionMaximizes;
     procedure TestRightClickShowsMenu;
     procedure TestIcon;
+    procedure TestSystemMenuNeedsNoOwnMenu;
+    procedure TestOwnMenuWithoutSystemMenu;
     procedure TestFrameState;
     procedure TestMaximizeGlyph;
   end;
@@ -95,9 +98,10 @@ begin
   MoveDeltaY:=aDeltaY;
 end;
 
-procedure TFakeFrame.ShowMenu;
+function TFakeFrame.ShowMenu: Boolean;
 begin
   Inc(Menus);
+  Result:=SystemHasMenu;
 end;
 
 procedure TTestTitleBar.Build;
@@ -109,6 +113,7 @@ begin
   FBar.Caption:='Title';
   FFrame:=TFakeFrame.Create;
   FFrame.IsActive:=True;
+  FFrame.SystemHasMenu:=True;
   FFrame.HotButton:=tbhClient;
   FFrame.PressedButton:=tbhClient;
   FBar.Frame:=FFrame;
@@ -261,6 +266,34 @@ begin
   Mouse(10,16,mbLeft,[ssDouble]);
   AssertEquals('double click closes',1,FFrame.Closes);
   AssertEquals(0,FFrame.Moves);
+end;
+
+procedure TTestTitleBar.TestSystemMenuNeedsNoOwnMenu;
+begin
+  Build;
+  Mouse(400,16,mbRight);
+  AssertNull(FBar.Menu);
+end;
+
+procedure TTestTitleBar.TestOwnMenuWithoutSystemMenu;
+begin
+  Build;
+  FFrame.SystemHasMenu:=False;
+  Mouse(400,16,mbRight);
+  AssertNotNull('opened',FBar.Menu);
+  AssertEquals('restore, minimize, maximize, line, close',5,FBar.Menu.Items.Count);
+  AssertFalse('restore needs a maximized window',FBar.Menu.Items[0].Enabled);
+  AssertTrue(FBar.Menu.Items[2].Enabled);
+  FBar.Menu.Items[1].Click;
+  AssertEquals('minimize',1,FFrame.Minimizes);
+  FBar.Menu.Items[2].Click;
+  AssertEquals('maximize',1,FFrame.Toggles);
+  FBar.Menu.Items[4].Click;
+  AssertEquals('close',1,FFrame.Closes);
+  FFrame.IsMaximized:=True;
+  Mouse(10,16,mbLeft);
+  AssertTrue('state is read each time',FBar.Menu.Items[0].Enabled);
+  AssertFalse(FBar.Menu.Items[2].Enabled);
 end;
 
 procedure TTestTitleBar.TestFrameState;

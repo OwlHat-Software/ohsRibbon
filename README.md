@@ -69,7 +69,7 @@ InstallTitleBar(Bar);
 ```
 
 On other platforms the bar hides itself and the title bar of the system stays. To restyle it, override the
-`--titlebar-*` variables. The system menu on right click depends on the window manager on Linux.
+`--titlebar-*` variables. Right click opens the window menu of the system; where the system has none, as under Wayland in WSL, the bar opens its own with restore, minimize, maximize and close.
 
 ## Keys
 
@@ -79,6 +79,7 @@ Alt or F6 (`TRibbon.KeyTipKey`) starts KeyTips, Escape goes back a level.
 
 - The ribbon is built from code. It has no component palette entry or form designer support.
 - Full keyboard navigation with the arrow keys is not there; KeyTips are the keyboard route.
+- Under Wayland in WSL the right Alt key arrives as AltGr, which does not start KeyTips. The left Alt key and F6 do.
 - Texts in the ribbon itself are the captions you pass in, apart from the default application button caption `File`.
 
 ## Build

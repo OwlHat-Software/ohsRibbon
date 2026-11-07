@@ -11,7 +11,7 @@ unit ohsribbon.ui.titlebar;
 interface
 
 uses
-  Classes, SysUtils, fpCSSTree, fpCSSResParser, Fresnel.Classes, Fresnel.DOM, Fresnel.Controls, Fresnel.Events, FCL.Events;
+  Classes, SysUtils, fpCSSTree, fpCSSResParser, Fresnel.Classes, Fresnel.DOM, Fresnel.Controls, Fresnel.Events, Fresnel.Menus, FCL.Events;
 
 type
   // What is under the mouse.
@@ -39,7 +39,8 @@ type
     // Start moving the window with the left mouse button that is down now. The mouse has already
     // come this far from where it was pressed, which the window has to catch up with.
     procedure BeginMove(aDeltaX, aDeltaY: TFresnelLength); virtual; abstract;
-    procedure ShowMenu; virtual; abstract;
+    // Open the window menu of the system. False if it has none; the bar then opens its own.
+    function ShowMenu: Boolean; virtual; abstract;
     property Bar: TRibbonTitleBar read FBar;
     property Active: Boolean read GetActive;
     property Maximized: Boolean read GetMaximized;
@@ -62,12 +63,17 @@ type
     FMoveArmed: Boolean;
     FMoveStartX, FMoveStartY: TFresnelLength;
     FMovePointer: TFreHandle;
+    FMenu: TPopupMenu;
+    FMenuRestore, FMenuMinimize, FMenuMaximize, FMenuClose: TMenuItem;
     function GetCaption: string;
     procedure SetCaption(const aValue: string);
     procedure SetFrame(aValue: TRibbonWindowFrame);
     function AddGlyph(aParent: TFresnelElement; const aClass: string): TDiv;
     procedure ShowMaximizeGlyph(aMaximized: Boolean);
     procedure DisarmMove;
+    function AddMenuItem(const aCaption: string): TMenuItem;
+    procedure OpenMenu(aX, aY: TFresnelLength);
+    procedure MenuClick(Sender: TObject);
     procedure HandleMouseDown(aEvent: TAbstractEvent);
     procedure HandleMouseMove(aEvent: TAbstractEvent);
     procedure HandleMouseUp(aEvent: TAbstractEvent);
@@ -86,9 +92,17 @@ type
     // The bar owns its frame.
     property Frame: TRibbonWindowFrame read FFrame write SetFrame;
     property Icon: TDiv read FIcon;
+    // The menu for a system without one. Nil until it was needed.
+    property Menu: TPopupMenu read FMenu;
   end;
 
 implementation
+
+resourcestring
+  rsTitleBarRestore = 'Restore';
+  rsTitleBarMinimize = 'Minimize';
+  rsTitleBarMaximize = 'Maximize';
+  rsTitleBarClose = 'Close';
 
 const
   // How far the mouse moves with the button down before that is a move and not a click, in pixels.
@@ -316,7 +330,7 @@ begin
   case HitTest(lEvent.ViewportX,lEvent.ViewportY) of
     tbhCaption:
       if lEvent.Button=mbRight then
-        FFrame.ShowMenu
+        OpenMenu(lEvent.ViewportX,lEvent.ViewportY)
       else if lEvent.Button=mbLeft then
         if lDouble then
           FFrame.ToggleMaximize
@@ -335,13 +349,51 @@ begin
         end;
     tbhIcon:
       if lEvent.Button=mbRight then
-        FFrame.ShowMenu
+        OpenMenu(lEvent.ViewportX,lEvent.ViewportY)
       else if lEvent.Button=mbLeft then
         if lDouble then
           FFrame.Close
         else
-          FFrame.ShowMenu;
+          OpenMenu(lEvent.ViewportX,lEvent.ViewportY);
   end;
+end;
+
+function TRibbonTitleBar.AddMenuItem(const aCaption: string): TMenuItem;
+begin
+  Result:=TMenuItem.Create(FMenu);
+  Result.Caption:=aCaption;
+  Result.OnClick:=@MenuClick;
+  FMenu.Items.Add(Result);
+end;
+
+procedure TRibbonTitleBar.OpenMenu(aX, aY: TFresnelLength);
+begin
+  if FFrame.ShowMenu then
+    Exit;
+  if FMenu=nil then
+  begin
+    FMenu:=TPopupMenu.Create(Self);
+    FMenuRestore:=AddMenuItem(rsTitleBarRestore);
+    FMenuMinimize:=AddMenuItem(rsTitleBarMinimize);
+    FMenuMaximize:=AddMenuItem(rsTitleBarMaximize);
+    AddMenuItem('-'); // a line
+    FMenuClose:=AddMenuItem(rsTitleBarClose);
+  end;
+  FMenuRestore.Enabled:=FFrame.Maximized;
+  FMenuMaximize.Enabled:=not FFrame.Maximized;
+  FMenu.PopUp(Viewport,aX,aY);
+end;
+
+procedure TRibbonTitleBar.MenuClick(Sender: TObject);
+begin
+  if FFrame=nil then
+    Exit;
+  if Sender=FMenuMinimize then
+    FFrame.Minimize
+  else if (Sender=FMenuRestore) or (Sender=FMenuMaximize) then
+    FFrame.ToggleMaximize
+  else if Sender=FMenuClose then
+    FFrame.Close;
 end;
 
 procedure TRibbonTitleBar.DisarmMove;
