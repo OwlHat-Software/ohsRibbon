@@ -80,7 +80,7 @@ begin
   lDocument.AddCSSClass('document');
   lDocument.Parent:=lBody;
   FStatus:=TLabel.Create(Self);
-  FStatus.Caption:='Resize the window, or press F6 for KeyTips.';
+  FStatus.Caption:='Resize the window, or press Alt or F6 for KeyTips.';
   FStatus.Parent:=lDocument;
   BuildRibbon;
   SwitchValue('capture',FCaptureFile);

@@ -14,7 +14,7 @@ something exists until it is ticked off there.
 | Requirements, plan, decision records | `docs\requirements.md`, `docs\implementation-plan.md`, `docs\decisions\` |
 | `build.cmd`, tests, demo | In place, for both targets |
 | `CLAUDE.md` | Not created yet: section 9 has the text |
-| Git remote, CI | None. `git push` and CI are not available yet (Q-P01) |
+| Git remote, CI | To be on GitHub (Q-P01), not created yet. `git push` and CI are not available yet |
 
 Toolchain on this machine (fpcupdeluxe install in `C:\lazarus`; neither tool is on `PATH`):
 
@@ -25,7 +25,7 @@ Toolchain on this machine (fpcupdeluxe install in `C:\lazarus`; neither tool is 
 | Lazarus config | `C:\lazarus\config_lazarus` | Pass with `--pcp=` so lazbuild finds the installed packages |
 | Fresnel | `C:\Users\JaccoUijlenhoet\Documents\development\lazarus_libraries\fresnel` (`src\fresnel.lpk`, `design\fresneldsgn.lpk`) | Separate repository |
 
-The open questions are in `docs\implementation-plan.md`. Q-P04 is answered by decision 0001.
+The answered questions are in `docs\implementation-plan.md`; none is open. Q-P04 is answered by decision 0001.
 
 ## 1. Roles
 
@@ -79,7 +79,7 @@ The open questions are in `docs\implementation-plan.md`. Q-P04 is answered by de
 `--pcp=C:\lazarus\config_lazarus`. The paths can be set through `RIBBON_LAZARUS_DIR` and `FRESNEL_DIR`. In one run,
 for i386-win32 and x86_64-win64, it:
 
-1. Checks the architecture rule. Proposed until Q-P02 is decided: the non-visual units in `src\model` may not use
+1. Checks the architecture rule (Q-P02): the non-visual units in `src\model` may not use
    Fresnel or LCL units, and nothing in `src\` may use LCL units directly. A broken rule stops the build.
 2. Builds the package (`src\ohsribbon.lpk`), the test project and the demo.
 3. Runs all unit tests. These use stand-in windows and fonts, so a change in input or look also needs a check with
@@ -97,7 +97,7 @@ is not done until that line appears. Logs go to `out\build.log` and `out\tests.l
 - Naming: `ohsribbon.<area>.<name>.pas` (dotted, like Fresnel's own units), tests `test\utest.<area>.<name>.pas`.
 - Visual behaviour that cannot be unit tested gets a command-line switch on the demo for a scripted check
   (for example `-theme` or `-page` for screenshots), which CI runs.
-- UI texts are `resourcestring`s in English. Whether they are translated, and how, is open (Q-P03).
+- UI texts are `resourcestring`s in English. Translation comes later; the format is chosen then (Q-P03).
 - Text files use CRLF in the working folder (`.gitattributes` has `* text=auto`); source files are ASCII without
   BOM unless a file needs otherwise.
 
@@ -131,11 +131,11 @@ is not done until that line appears. Logs go to `out\build.log` and `out\tests.l
   `C:\Users\JaccoUijlenhoet\Documents\development\lazarus_libraries\fresnel`.
 - Requirement IDs (RB-xxx), work packages (WP-x.y) and questions (Q-Pxx) come from the docs in `docs\`.
   Mention them in commits and pull requests.
-- `src\model`: no Fresnel or LCL units, and `src\` uses no LCL units directly (build.cmd enforces it; proposed
-  until Q-P02 is decided). Everything in `src\model` gets unit tests (FPCUnit).
+- `src\model`: no Fresnel or LCL units, and `src\` uses no LCL units directly (build.cmd enforces it, Q-P02).
+  Everything in `src\model` gets unit tests (FPCUnit).
 - New units: add them to `ohsribbon.lpk` and to the test project when testable.
 - Unit names: `ohsribbon.<area>.<name>`; tests `test\utest.<area>.<name>`.
-- UI texts are resource strings in English. Translation is open (Q-P03).
+- UI texts are resource strings in English. Translation comes later (Q-P03).
 - Text files use CRLF. Source files stay ASCII (no BOM) unless a file needs otherwise.
 - Work in this folder on `main`: no worktrees, no `claude/<topic>` branches unless the developer asks. After a
   change run `build.cmd`; it must end with `BUILD OK, TESTS PASSED` (the demo in `out\` is what the developer
@@ -150,7 +150,7 @@ is not done until that line appears. Logs go to `out\build.log` and `out\tests.l
 ## 10. Setting it up
 
 - [x] Answer Q-P04 (decision 0001).
-- [ ] Answer Q-P01, Q-P02 and Q-P03, each as a decision record where it is a real choice.
+- [x] Answer Q-P01, Q-P02 and Q-P03 (see the implementation plan).
 - [x] Put the requirements and an implementation plan (milestones, work packages with exit checks) in `docs\`,
       and move the open questions from section 0 into the plan.
 - [x] Add `docs\decisions\0000-template.md` and a README index.

@@ -18,7 +18,7 @@ interface
 uses
   Classes, SysUtils, Math, Types, fpCSSTree, fpCSSResParser,
   Fresnel.Classes, Fresnel.DOM, Fresnel.Controls, Fresnel.Images, Fresnel.Events,
-  FCL.Events, Fresnel.Keys, Fresnel.Overlay, Fresnel.Menus,
+  FCL.Events, Fresnel.Overlay, Fresnel.Menus,
   ohsribbon.model.sizing, ohsribbon.model.keytips;
 
 const
@@ -343,7 +343,6 @@ type
     // KeyTips
     procedure InstallKeyListeners;
     procedure RemoveKeyListeners;
-    function IsKeyTipKey(aEvent: TFresnelKeyEvent): Boolean;
     procedure HandleKeyDown(aEvent: TAbstractEvent);
     procedure HandleKeyUp(aEvent: TAbstractEvent);
     procedure HandleMouseDown(aEvent: TAbstractEvent);
@@ -389,7 +388,7 @@ type
     // True while a collapsed ribbon shows its panel on demand.
     property PanelOpen: Boolean read GetPanelOpen;
     property Panel: TDiv read FPanel;
-    // The key that starts KeyTips next to Alt; see FC-01.
+    // The key that starts KeyTips next to Alt.
     property KeyTipKey: string read FKeyTipKey write FKeyTipKey;
     property KeyTipsActive: Boolean read GetKeyTipsActive;
     property KeyTipLevel: Integer read FKeyLevel;
@@ -457,7 +456,6 @@ const
     +' ribbonbutton:disabled { opacity: 0.45; }'
     +' ribbonbutton.ribbon-checked { background-color: var(--ribbon-checked); }'
     +' ribbonbutton img { width: 16px; height: 16px; flex-shrink: 0; }'
-    +' ribbonbutton.ribbon-icononly label { display: none; }'
     +' ribbonbutton.ribbon-large { min-width: 46px; height: 70px; padding: 4px 6px; justify-content: flex-start; }'
     +' ribbonbutton.ribbon-large img { width: 32px; height: 32px; }'
     +' ribbonbutton.ribbon-medium { height: 23px; padding: 2px 6px; }'
@@ -604,8 +602,6 @@ var
   lText: string;
   lIconOnly: Boolean;
 begin
-  // The caption of a button with an image is never cleared, because that raises in
-  // TTextButton (FC-02). An icon-only item hides its label through CSS.
   lIconOnly:=HaveImage and ((FDisplaySize=risSmall) or (FText=''));
   lText:=FText;
   if FKind=rikDropdown then
@@ -616,9 +612,9 @@ begin
     end
     else
       lText:=lText+' '+cArrowDown;
-  SetClass(Self,'ribbon-icononly',lIconOnly);
-  if lText<>'' then
-    inherited Caption:=lText;
+  if lIconOnly then
+    lText:='';
+  inherited Caption:=lText;
 end;
 
 procedure TRibbonItem.SetDisplaySize(aSize: TRibbonItemSize);
@@ -1681,20 +1677,6 @@ begin
   FKeyViewport:=nil;
 end;
 
-function TRibbon.IsKeyTipKey(aEvent: TFresnelKeyEvent): Boolean;
-var
-  lNumber: Integer;
-begin
-  Result:=SameText(aEvent.Key,FKeyTipKey);
-  if Result then
-    Exit;
-  // The Win32 backend reports F2 to F24 with a wrong code, and F6 as KanaMode (FC-03).
-  // This stops mattering once that is fixed.
-  if (Length(FKeyTipKey)>=2) and (UpCase(FKeyTipKey[1])='F')
-    and TryStrToInt(Copy(FKeyTipKey,2,2),lNumber) and (lNumber>=2) and (lNumber<=24) then
-    Result:=aEvent.NumKey=TKeyCodes.F1+(lNumber-1);
-end;
-
 procedure TRibbon.HandleKeyDown(aEvent: TAbstractEvent);
 var
   lEvent: TFresnelKeyEvent;
@@ -1707,7 +1689,7 @@ begin
   if not KeyTipsActive then
   begin
     FAltArmed:=lKey='Alt';
-    if IsKeyTipKey(lEvent) then
+    if SameText(lKey,FKeyTipKey) then
     begin
       ShowKeyTips;
       lEvent.PreventDefault;
@@ -1722,7 +1704,7 @@ begin
       HideKeyTips;
     lEvent.PreventDefault;
   end
-  else if IsKeyTipKey(lEvent) or (lKey='Alt') then
+  else if SameText(lKey,FKeyTipKey) or (lKey='Alt') then
   begin
     HideKeyTips;
     lEvent.PreventDefault;

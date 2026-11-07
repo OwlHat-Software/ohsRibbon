@@ -13,7 +13,7 @@ Lazarus and Free Pascal.
 - KeyTips
 - Light and dark look, restylable through `--ribbon-*` CSS variables
 
-It builds with FPC 3.2.2 and Lazarus 4.8 for i386-win32 and x86_64-win64.
+It builds with FPC 3.2.2 and Lazarus 4.8 for i386-win32 and x86_64-win64. It needs Fresnel with the fixes in `docs\library-changes`.
 
 ## Use
 
@@ -52,8 +52,7 @@ ribbon, .ribbon-popup { --ribbon-accent: #7a3e9d; }
 
 ## Keys
 
-F6 starts KeyTips (`TRibbon.KeyTipKey`), Escape goes back a level. Alt also starts them on a backend that delivers
-it, which the Fresnel Win32 backend does not do yet: see `docs\library-changes\FC-01-win32-alt-key.md`.
+Alt or F6 (`TRibbon.KeyTipKey`) starts KeyTips, Escape goes back a level.
 
 ## Limits
 

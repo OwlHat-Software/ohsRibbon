@@ -13,7 +13,6 @@ Route `WM_SYSKEYDOWN` and `WM_SYSKEYUP` through the same code as `WM_KEYDOWN` an
 `WSKey` reports the event as handled (`PreventDefault`); otherwise call `DefWindowProc`, so Alt+F4 and the system
 menu keep working.
 
-## Until then
+## Status
 
-`TRibbon.KeyTipKey` (default `F6`) and `TRibbon.ShowKeyTips` start KeyTips. The ribbon already reacts to `Alt`
-if a backend delivers it, so no ribbon change is needed once this is done.
+Applied in Fresnel as `8370b3d5`. Alt now starts KeyTips; `TRibbon.KeyTipKey` (default `F6`) still works next to it.

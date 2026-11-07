@@ -25,6 +25,6 @@ if (FLabelChild<>nil) and (FImageChild<>nil) and (FLabelChild.Parent=Self) and (
   InsertBefore(FImageChild,FLabelChild);
 ```
 
-## Until then
+## Status
 
-`TRibbonItem` never clears a caption: an icon-only item hides its label through the CSS class `ribbon-icononly`.
+Applied in Fresnel as `02e3ef37`. `TRibbonItem` now clears the caption of an icon-only item.

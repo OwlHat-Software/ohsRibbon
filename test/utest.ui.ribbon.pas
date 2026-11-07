@@ -5,7 +5,7 @@ unit utest.ui.ribbon;
 interface
 
 uses
-  Classes, SysUtils, Math, fpcunit, testregistry, TCCSS, FCL.Events, Fresnel.Events, Fresnel.Images, Fresnel.Keys,
+  Classes, SysUtils, Math, fpcunit, testregistry, TCCSS, FCL.Events, Fresnel.Events, Fresnel.Images,
   Fresnel.Classes, Fresnel.DOM, Fresnel.Controls, Fresnel.Overlay,
   ohsribbon.model.sizing, ohsribbon.ui.ribbon;
 
@@ -55,7 +55,7 @@ type
     procedure TestKeyTipsEnterTabAndClick;
     procedure TestKeyTipsHide;
     procedure TestKeyTipsIgnoresUnknownKey;
-    procedure TestKeyboardF6AsReportedByWin32;
+    procedure TestKeyboardAltTapShowsKeyTips;
     procedure TestDoubleClickHeaderCollapsesWithoutPopup;
     procedure TestKeyTipsSkipDisabled;
     procedure TestIconItemsSurviveEveryWidth;
@@ -635,6 +635,17 @@ procedure TTestRibbon.TestIconOnlyKeepsCaption;
 var
   lImage: TImageData;
   lItem: TRibbonItem;
+
+  function ShowsLabel: Boolean;
+  var
+    i: Integer;
+  begin
+    Result:=False;
+    for i:=0 to lItem.NodeCount-1 do
+      if lItem.Nodes[i] is TCustomLabel then
+        Exit(True);
+  end;
+
 begin
   Build(1000);
   lImage:=TImageData.Create(Viewport);
@@ -642,11 +653,11 @@ begin
   lItem:=FRibbon.AddTab('One').AddGroup('G').AddButton('Bold',risSmall);
   lItem.Image:=lImage;
   Settle;
-  AssertTrue(lItem.HasCSSClass('ribbon-icononly'));
+  AssertFalse('small shows only the icon',ShowsLabel);
   AssertEquals('Bold',lItem.Caption);
   lItem.SetDisplaySize(risMedium);
-  AssertFalse(lItem.HasCSSClass('ribbon-icononly'));
   Settle;
+  AssertTrue('medium shows the caption again',ShowsLabel);
 end;
 
 procedure TTestRibbon.TestKeyboardF6ShowsKeyTips;
@@ -710,19 +721,22 @@ begin
   AssertEquals('only the enabled button',1,FRibbon.BadgeCount);
 end;
 
-procedure TTestRibbon.TestKeyboardF6AsReportedByWin32;
+procedure TTestRibbon.TestKeyboardAltTapShowsKeyTips;
 var
   lInit: TFresnelKeyEventInit;
 begin
-  // Regression, as seen with real keys: Win32 reports F6 as KanaMode (FC-03).
   Build(1000);
   FRibbon.AddTab('Home');
   Settle;
+  AssertFalse('Alt going down stays with the system',SendKey('Alt'));
+  AssertFalse(FRibbon.KeyTipsActive);
   lInit:=Default(TFresnelKeyEventInit);
-  lInit.NumKey:=TKeyCodes.F1+5;
-  lInit.Key:=TKeyCodes.Names[lInit.NumKey];
-  AssertTrue(Viewport.WSKey(lInit,evtKeyDown));
+  lInit.Key:='Alt';
+  AssertTrue('Alt coming up is consumed, so no system menu',Viewport.WSKey(lInit,evtKeyUp));
   AssertTrue(FRibbon.KeyTipsActive);
+  Settle;
+  AssertTrue('Alt again closes',SendKey('Alt'));
+  AssertFalse(FRibbon.KeyTipsActive);
 end;
 
 procedure TTestRibbon.TestDoubleClickHeaderCollapsesWithoutPopup;

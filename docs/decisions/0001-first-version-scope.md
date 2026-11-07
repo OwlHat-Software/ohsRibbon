@@ -29,4 +29,4 @@ The developer chose on 2026-11-07: **full ribbon**, **neutral light and dark**, 
 
 - Answers Q-P04. Both targets are built by `build.cmd`.
 - No Microsoft icons, assets or colour palette are used.
-- The Alt key does not reach Fresnel on Win32, so KeyTips need FC-01 (see `docs\library-changes`).
+- The Alt key did not reach Fresnel on Win32, so KeyTips needed FC-01 (see `docs\library-changes`). It is applied since.

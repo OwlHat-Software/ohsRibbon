@@ -16,12 +16,12 @@ goes the wrong way. Only F1 is right. F6 becomes `SpecialKeysOffset - 87`, which
 ## Change
 
 ```pascal
-VK_F1..VK_F24 : Result:=TKeyCodes.F1-(aKey-VK_F1);
+VK_F1..VK_F20  : Result:=TKeyCodes.F1-(aKey-VK_F1);
+VK_F21..VK_F24 : Result:=TKeyCodes.F21-(aKey-VK_F21);
 ```
 
-Check first that `F1` to `F24` are consecutive in `TKeyCodes`.
+`F21` does not follow `F20` in `TKeyCodes`, so those four need their own line.
 
-## Until then
+## Status
 
-`TRibbon.IsKeyTipKey` also accepts the wrong code for its key. Once this is fixed that code is never sent, so the
-check does nothing and can be removed. Until then the Kana key on a Japanese keyboard also starts KeyTips.
+Applied in Fresnel as `8370b3d5`. The check for the wrong code in the ribbon is removed.
