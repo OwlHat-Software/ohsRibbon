@@ -5,7 +5,7 @@ Masterplanner workflow, a Delphi/FMX application, to a Lazarus/Free Pascal libra
 
 ## 0. Where the project stands (2026-11-07)
 
-Sections 2 and 4 to 6 are in place; section 7 waits for a remote. Section 10 is the checklist. Do not assume
+Sections 2 and 4 to 6 are in place; section 7 waits for the CI workflow. Section 10 is the checklist. Do not assume
 something exists until it is ticked off there.
 
 | Item | State |
@@ -14,7 +14,7 @@ something exists until it is ticked off there.
 | Requirements, plan, decision records | `docs\requirements.md`, `docs\implementation-plan.md`, `docs\decisions\` |
 | `build.cmd`, tests, demo | In place, for both targets |
 | `CLAUDE.md` | Not created yet: section 9 has the text |
-| Git remote, CI | To be on GitHub (Q-P01), not created yet. `git push` and CI are not available yet |
+| Git remote, CI | `github.com/OwlHat-Software/ohsRibbon` (Q-P01). CI is not set up yet |
 
 Toolchain on this machine (fpcupdeluxe install in `C:\lazarus`; neither tool is on `PATH`):
 
@@ -30,8 +30,8 @@ The answered questions are in `docs\implementation-plan.md`; none is open. Q-P04
 ## 1. Roles
 
 - **The developer decides.** Scope, choices between options, priorities and releases are theirs.
-- **Claude implements.** It writes the code, tests and docs, builds, commits and, once there is a remote, pushes
-  and watches CI.
+- **Claude implements.** It writes the code, tests and docs, builds, commits, pushes and,
+  once CI is set up, watches it.
 - When a choice comes up that the developer should make, Claude stops, writes it down with a recommendation, and
   asks (section 4). It does not build on a choice that has not been made.
 - Anything Claude cannot do itself (checks by hand, installing the package in the IDE, other hardware, work in
@@ -104,7 +104,6 @@ is not done until that line appears. Logs go to `out\build.log` and `out\tests.l
 ## 7. Commit, push, CI
 
 - After a green build: commit (one coherent change per commit, IDs in the message), push to `main`.
-- Until there is a remote (Q-P01) the work stops at the local commit; say so in the report.
 - CI, once set up, runs on a self-hosted Windows runner with the same Lazarus install and builds every push from
   a clean checkout. It calls `build.cmd`, runs the scripted checks and takes screenshots of the demo. The
   screenshots go into the run artifact and onto the `ci-output/main` branch, so the developer can look at the
@@ -139,7 +138,7 @@ is not done until that line appears. Logs go to `out\build.log` and `out\tests.l
 - Text files use CRLF. Source files stay ASCII (no BOM) unless a file needs otherwise.
 - Work in this folder on `main`: no worktrees, no `claude/<topic>` branches unless the developer asks. After a
   change run `build.cmd`; it must end with `BUILD OK, TESTS PASSED` (the demo in `out\` is what the developer
-  runs). Then commit, and push to `main` once there is a remote; CI builds every push. A red CI run on `main` is
+  runs). Then commit, and push to `main`; once set up, CI builds every push. A red CI run on `main` is
   fixed first.
 - Choices the developer should make: write a decision record in `docs\decisions` (status *Proposed*),
   give a recommendation, and ask. Do not build on a proposal before it is accepted.
@@ -158,6 +157,6 @@ is not done until that line appears. Logs go to `out\build.log` and `out\tests.l
 - [x] Add `out/` and `lib/` to `.gitignore`.
 - [x] Create `src\ohsribbon.lpk`, the test project and the demo.
 - [x] Write `build.cmd` with the checks from section 5 and the fixed last line.
-- [ ] Create the remote, and add the CI workflow that calls the same `build.cmd`, plus screenshots and an output
-      branch.
+- [x] Create the remote.
+- [ ] Add the CI workflow that calls the same `build.cmd`, plus screenshots and an output branch.
 - [ ] Paste section 9 into `CLAUDE.md`.

@@ -11,7 +11,7 @@
 
 ## Changes needed in Fresnel
 
-All three are applied on the Fresnel `main` branch, and the ribbon relies on them. They are local until that branch is pushed.
+All three are applied on the Fresnel `main` branch, which is pushed to the fork on GitLab, and the ribbon relies on them.
 
 | Spec | Problem | Fresnel commit |
 |---|---|---|
@@ -23,6 +23,6 @@ All three are applied on the Fresnel `main` branch, and the ribbon relies on the
 
 | ID | Answer |
 |---|---|
-| Q-P01 | The ohsRibbon remote is on GitHub, so the CI is GitHub Actions. The remote and the workflow are not there yet. |
+| Q-P01 | The ohsRibbon remote is on GitHub (`OwlHat-Software/ohsRibbon`), so the CI is GitHub Actions. The workflow is not there yet. |
 | Q-P02 | The architecture rule in `build.cmd` stands as built: no Fresnel or LCL in `src\model`, no LCL in `src\`. |
 | Q-P03 | Translations are in scope, but not for now. English stays the main language. The format is chosen when the work is taken up. |
