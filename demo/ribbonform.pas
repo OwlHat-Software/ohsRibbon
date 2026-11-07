@@ -142,6 +142,9 @@ begin
   FreeAndNil(FFrame);
   {$ENDIF}
   FreeAndNil(FTimer);
+  // CreateFormNew does not make this the main form, whose end stops the application.
+  if FresnelApplication<>nil then
+    FresnelApplication.Terminate;
   inherited Destroy;
 end;
 
