@@ -356,6 +356,11 @@ type
     function ShowMenu: Boolean; override;
   end;
 
+function IsWayland: Boolean;
+begin
+  Result:=g_type_name_from_instance(PGTypeInstance(gdk_display_get_default()))='GdkWaylandDisplay';
+end;
+
 function FrameWindowState(aWidget: PGtkWidget; aEvent: PGdkEvent; aData: gpointer): gboolean; cdecl;
 begin
   Result:=False;
@@ -446,12 +451,13 @@ var
   lEvent: PGdkEvent;
 begin
   Result:=False;
-  if FWindow=nil then
+  if (FWindow=nil) or IsWayland then
     Exit;
   lEvent:=gtk_get_current_event();
   if lEvent=nil then
     Exit;
-  // Not every window manager has this menu.
+  // Not every window manager has this menu. X11 can check that. Wayland only sends the request and
+  // reports success, also when nothing opens, so there the bar always opens its own.
   Result:=gdk_window_show_window_menu(gtk_widget_get_window(PGtkWidget(FWindow)),lEvent);
   gdk_event_free(lEvent);
 end;

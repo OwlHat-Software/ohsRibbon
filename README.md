@@ -69,7 +69,7 @@ InstallTitleBar(Bar);
 ```
 
 On other platforms the bar hides itself and the title bar of the system stays. To restyle it, override the
-`--titlebar-*` variables. Right click opens the window menu of the system; where the system has none, as under Wayland in WSL, the bar opens its own with restore, minimize, maximize and close.
+`--titlebar-*` variables. Right click opens the window menu of the system on Windows and X11. Where X11 has none, and always under Wayland, where a program cannot tell whether a menu opened, the bar opens its own with restore, minimize, maximize and close.
 
 ## Keys
 
