@@ -40,7 +40,6 @@ type
   public
     constructor Create(aWindow: HWND);
     destructor Destroy; override;
-    procedure SetTitle(const aTitle: string);
     function Handle(aMsg: UINT; aWParam: WPARAM; aLParam: LPARAM): LRESULT;
     property Active: Boolean read GetActive;
     property Maximized: Boolean read GetMaximized;
@@ -101,11 +100,6 @@ destructor TWindowFrame.Destroy;
 begin
   SetWindowLongPtr(FWindow,GWLP_WNDPROC,LONG_PTR(FOldProc));
   inherited Destroy;
-end;
-
-procedure TWindowFrame.SetTitle(const aTitle: string);
-begin
-  SetWindowTextW(FWindow,PWideChar(UTF8Decode(aTitle)));
 end;
 
 function TWindowFrame.GetActive: Boolean;

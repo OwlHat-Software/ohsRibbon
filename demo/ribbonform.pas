@@ -430,8 +430,6 @@ begin
     FFrame:=TWindowFrame.Create(TWin32WSForm(WSForm).Window);
     FFrame.OnHitTest:=@FrameHitTest;
     FFrame.OnChange:=@FrameChange;
-    // For the taskbar. The Win32 backend does not set a form's caption yet (FC-04).
-    FFrame.SetTitle(Caption);
   end;
   inherited Show;
   if (FCaptureFile='') or (FTimer<>nil) then

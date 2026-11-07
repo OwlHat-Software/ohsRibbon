@@ -10,12 +10,14 @@ taskbar and in Alt+Tab.
 
 ## Change
 
-Set and read the title with `SetWindowTextW` and `GetWindowTextW`, converting from and to UTF-8.
+Set and read the title with `DefWindowProcW` and `WM_SETTEXT` and `WM_GETTEXT`, converting from and to UTF-8. The window
+class is ANSI, so `SetWindowTextW` goes through the code page and turns other characters into `?`.
 
-`TFresnelCustomForm.SetCaption` only passes a caption on if the window exists. `CreateWSForm` should also pass the
-caption set before that, or the form's first title is lost.
+`TFresnelCustomForm.SetCaption` only passes a caption on if the window exists, so `CreateWSWindow` also sets the
+caption of the form if it has one, much as the GTK3 backend does.
 
-## Until then
+## Status
 
-The demo sets the title itself: `TWindowFrame.SetTitle` in `demo\ribbonframe.pas`. The ribbon library does not need
-this change.
+A form that never sets a caption keeps the title `FormTitle`, so applications without one do not change.
+
+Applied in Fresnel as `f8412351`. The demo relies on it for its title; the ribbon library does not need it.
