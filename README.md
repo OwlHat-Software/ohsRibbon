@@ -12,6 +12,7 @@ Lazarus and Free Pascal.
 - Contextual tabs
 - KeyTips
 - Light and dark look, restylable through `--ribbon-*` CSS variables
+- Optional title bar in place of the one of the system, on Windows and on Linux with GTK3
 
 It builds with FPC 3.2.2 and Lazarus 4.8 for i386-win32 and x86_64-win64, and with FPC 3.2.2 and Lazarus 4.4 for x86_64-linux. It needs Fresnel with the fixes in `docs\library-changes`.
 
@@ -50,6 +51,26 @@ To restyle it, override the variables in your stylesheet, for both the ribbon an
 ribbon, .ribbon-popup { --ribbon-accent: #7a3e9d; }
 ```
 
+## Title bar
+
+`TRibbonTitleBar` draws an icon, the title and minimize, maximize and close buttons. Windows and GTK keep doing the
+shadow, resizing and, where they offer it, snapping. It is separate from the ribbon, so a program without it does not
+link any of this.
+
+```pascal
+uses ohsribbon.ui.titlebar, ohsribbon.ui.titlebar.native;
+
+Bar:=TRibbonTitleBar.Create(Self);
+Bar.Caption:=Caption;
+Bar.Parent:=Body; // first, above the ribbon
+
+// Once, before the form is first shown, for example in an override of Show.
+InstallTitleBar(Bar);
+```
+
+On other platforms the bar hides itself and the title bar of the system stays. To restyle it, override the
+`--titlebar-*` variables. The system menu on right click depends on the window manager on Linux.
+
 ## Keys
 
 Alt or F6 (`TRibbon.KeyTipKey`) starts KeyTips, Escape goes back a level.
@@ -67,9 +88,8 @@ build.cmd
 ```
 
 This builds the package, tests and demo for both targets and runs the tests. It must end with
-`BUILD OK, TESTS PASSED`. The demo is `out\<target>\ribbondemo.exe`. It draws its own title bar on Windows, see `demo\ribbonframe.pas`.
+`BUILD OK, TESTS PASSED`. The demo is `out\<target>\ribbondemo.exe`. It uses `TRibbonTitleBar`.
 
 On Linux, run `./build.sh` instead. It needs `lazbuild`, FPC and the GTK3 development files, and looks for Fresnel next
-to this repository or in `FRESNEL_DIR`. The demo is `out/x86_64-linux/ribbondemo`, which finds `libsk4d.so` next to itself.
-It uses the title bar of the system there. How the project is worked on is in
+to this repository or in `FRESNEL_DIR`. The demo is `out/x86_64-linux/ribbondemo`, which finds `libsk4d.so` next to itself. How the project is worked on is in
 `docs\claude-workflow.md`.

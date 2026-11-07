@@ -13,7 +13,7 @@
         <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
     </CompilerOptions>
-    <Files Count="3">
+    <Files Count="5">
       <Item1>
         <Filename Value="model\ohsribbon.model.sizing.pas"/>
         <UnitName Value="ohsribbon.model.sizing"/>
@@ -26,6 +26,14 @@
         <Filename Value="ohsribbon.ui.ribbon.pas"/>
         <UnitName Value="ohsribbon.ui.ribbon"/>
       </Item3>
+      <Item4>
+        <Filename Value="ohsribbon.ui.titlebar.pas"/>
+        <UnitName Value="ohsribbon.ui.titlebar"/>
+      </Item4>
+      <Item5>
+        <Filename Value="ohsribbon.ui.titlebar.native.pas"/>
+        <UnitName Value="ohsribbon.ui.titlebar.native"/>
+      </Item5>
     </Files>
     <RequiredPkgs Count="2">
       <Item1>

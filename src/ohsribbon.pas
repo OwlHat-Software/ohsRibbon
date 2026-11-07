@@ -8,7 +8,7 @@ unit ohsribbon;
 interface
 
 uses
-  ohsribbon.model.sizing, ohsribbon.model.keytips, ohsribbon.ui.ribbon;
+  ohsribbon.model.sizing, ohsribbon.model.keytips, ohsribbon.ui.ribbon, ohsribbon.ui.titlebar, ohsribbon.ui.titlebar.native;
 
 implementation
 

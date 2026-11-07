@@ -12,6 +12,7 @@ MoSCoW priority: M must, S should, C could. Scope is set by decision 0001.
 | RB-006 | M | Quick access toolbar |
 | RB-007 | M | Collapse and expand; a collapsed ribbon shows the panel on demand |
 | RB-008 | S | Group dialog launcher |
+| RB-009 | S | A title bar drawn by the application, in place of the one of the system, on Windows and on Linux with GTK3: icon, title, minimize, maximize and close, and the mouse handling of a normal window |
 | RB-020 | M | Groups step down in size as the window narrows and collapse into a dropdown, and step back up as it widens |
 | RB-030 | M | Galleries with paging and an expanded view |
 | RB-031 | M | Contextual tabs shown and hidden by the application |

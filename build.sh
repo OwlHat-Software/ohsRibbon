@@ -55,7 +55,7 @@ cp demo/icons/*.png "$OUT/icons/"
 
 echo "=== $TARGET" >>"$TESTLOG"
 # The Fresnel test harness registers its own tests too, so run the ribbon suites by name.
-for suite in TTestSizing TTestKeyTips TTestRibbon; do
+for suite in TTestSizing TTestKeyTips TTestRibbon TTestTitleBar; do
   if ! LD_LIBRARY_PATH="$PWD/$OUT" "$OUT/ohsribbontests" --suite="$suite" --format=plain >>"$TESTLOG" 2>&1; then
     echo "Tests failed for $TARGET in $suite, see out/tests.log"
     exit 1

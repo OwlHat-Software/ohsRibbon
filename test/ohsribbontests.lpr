@@ -4,7 +4,7 @@ program ohsribbontests;
 
 uses
   Classes, consoletestrunner, Fresnel.CursorTimer, Fresnel.AnimationTimer,
-  utest.model.sizing, utest.model.keytips, utest.ui.ribbon;
+  utest.model.sizing, utest.model.keytips, utest.ui.ribbon, utest.ui.titlebar;
 
 var
   Application: TTestRunner;

@@ -66,7 +66,7 @@ for %%T in (i386-win32 x86_64-win64) do (
 
   echo === %%T >>"%TESTLOG%"
   rem The Fresnel test harness registers its own tests too, so run the ribbon suites by name.
-  for %%S in (TTestSizing TTestKeyTips TTestRibbon) do (
+  for %%S in (TTestSizing TTestKeyTips TTestRibbon TTestTitleBar) do (
     "out\%%T\ohsribbontests.exe" --suite=%%S --format=plain >>"%TESTLOG%" 2>&1
     if errorlevel 1 (
       echo Tests failed for %%T in %%S, see out\tests.log
