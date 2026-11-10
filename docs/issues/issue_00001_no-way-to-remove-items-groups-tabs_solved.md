@@ -114,3 +114,26 @@ code; no run-time reproduction was needed for a missing method.
 
 The suggested fix is a sound starting point. The fix should also make `CollectKeyLevel` skip hidden
 elements.
+
+## Solved
+
+Fixed in `d1732a0` (RB-010), as suggested, with these choices:
+
+- `TRibbonGroup.RemoveItem`, `RemoveItemAt` and `IndexOfItem`; `TRibbonTab.RemoveGroup` and `IndexOfGroup`;
+  `TRibbon.RemoveTab`, `IndexOfTab`, `RemoveQuickItem` and `IndexOfQuickItem`. A remove call with something
+  that is not in the list does nothing.
+- What is removed is freed with everything in it. Unused layout columns of a removed group and the expanded
+  view of a removed gallery are freed too. A group keeps unused columns while it stays, for reuse; they
+  do not grow with each load and unload.
+- An open popup of what goes (a collapsed group, a gallery's expanded view) is closed first, and KeyTips
+  are hidden.
+- Removing from the element's own click is safe: the ribbon frees it after the click, through the
+  application's async queue when there is one. The adapter does not need to queue anything.
+- KeyTips skip elements with `cRibbonHiddenClass`, so the workaround no longer leaves key tips on hidden
+  buttons.
+
+Tests: 11 new tests in `test/utest.ui.ribbon.pas`, passing on i386-win32, x86_64-win64 and x86_64-linux.
+The async path runs only inside a Fresnel application, so the tests cover the direct path.
+
+For the planner: `TOhsRibbonAdapter.Remove` and `TidyUp` can call `RemoveItem`, `RemoveGroup` and
+`RemoveTab` now, instead of hiding.
