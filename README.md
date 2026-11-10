@@ -45,6 +45,16 @@ Format:=Ribbon.AddContextualTab('Picture tools','Format');
 Ribbon.SetContextVisible('Picture tools',True);
 ```
 
+What was added can be taken away again, for example when a plugin unloads. Each removal frees the element and
+everything in it, and is safe from the element's own click:
+
+```pascal
+Group.RemoveItem(PasteButton);
+Tab.RemoveGroup(Group);
+Ribbon.RemoveTab(Format);   // the last tab of a context also removes the context
+Ribbon.RemoveQuickItem(SaveButton);
+```
+
 To restyle it, override the variables in your stylesheet, for both the ribbon and its popups:
 
 ```css

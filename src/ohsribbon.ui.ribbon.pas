@@ -18,7 +18,7 @@ interface
 uses
   Classes, SysUtils, Math, Types, fpCSSTree, fpCSSResParser,
   Fresnel.Classes, Fresnel.DOM, Fresnel.Controls, Fresnel.Images, Fresnel.Events,
-  FCL.Events, Fresnel.Overlay, Fresnel.Menus,
+  FCL.Events, Fresnel.Overlay, Fresnel.Menus, Fresnel.Forms,
   ohsribbon.model.sizing, ohsribbon.model.keytips;
 
 const
@@ -135,6 +135,7 @@ type
     FTop: Integer;
     FSelectedIndex: Integer;
     FPopup: TDiv;
+    FPopupOverlay: TOverlay;
     FOnSelect: TRibbonGallerySelectEvent;
     function GetCount: Integer;
     function GetCell(aIndex: Integer): TRibbonGalleryCell;
@@ -210,6 +211,12 @@ type
     function AddGallery(aColumns: Integer = 4): TRibbonGallery;
     // Any Fresnel element, such as a combo box. It keeps its size at every level.
     procedure AddControl(aControl: TFresnelElement);
+    // -1 when aItem is not one of Items. A split button and a gallery are one item each.
+    function IndexOfItem(aItem: TFresnelElement): Integer;
+    // Take an item out of the group and free it, with everything in it. Does nothing when aItem
+    // is not one of Items. Safe from the item's own OnClick: the item is freed after the click.
+    procedure RemoveItem(aItem: TFresnelElement);
+    procedure RemoveItemAt(aIndex: Integer);
     // Re-apply the level, after a change in the items.
     procedure ApplyLevel(aLevel: Integer);
     property Caption: string read FCaption write SetCaption;
@@ -269,6 +276,10 @@ type
     constructor CreateFor(aRibbon: TRibbon; const aCaption, aContextName: string);
     destructor Destroy; override;
     function AddGroup(const aCaption: string): TRibbonGroup;
+    function IndexOfGroup(aGroup: TRibbonGroup): Integer;
+    // Take a group out of the tab and free it, with its items. Does nothing when aGroup is not
+    // one of Groups.
+    procedure RemoveGroup(aGroup: TRibbonGroup);
     // Forget the measured widths and start from full size.
     procedure InvalidateLayout;
     property Caption: string read GetCaption write SetCaption;
@@ -318,6 +329,20 @@ type
     FBadges: TFPList;
     FBadgeOverlays: TFPList;
     FAltArmed: Boolean;
+    // Removing: detached elements wait here until no click of the ribbon is running.
+    FDiscarded: TFPList;
+    FClickDepth: Integer;
+    FFreeQueued: Boolean;
+    procedure BeginClick;
+    procedure EndClick;
+    procedure BeforeRemove;
+    procedure Discard(aElement: TFresnelElement);
+    procedure ReleaseElement(aElement: TFresnelElement);
+    procedure ReleaseGroup(aGroup: TRibbonGroup);
+    procedure DropUnusedContext(const aContextName: string);
+    procedure ScheduleFree;
+    procedure FreeDiscardedAsync(aData: Pointer);
+    procedure FreeDiscarded;
     function GetTab(aIndex: Integer): TRibbonTab;
     function GetTabCount: Integer;
     function GetApplicationMenu: TPopupMenu;
@@ -368,8 +393,16 @@ type
     function AddContextualTab(const aContextName, aCaption: string): TRibbonTab;
     procedure SetContextVisible(const aContextName: string; aVisible: Boolean);
     function IsContextVisible(const aContextName: string): Boolean;
+    function IndexOfTab(aTab: TRibbonTab): Integer;
+    // Take a tab out of the ribbon and free it, with its header and groups. Removing the active
+    // tab activates a neighbour; removing the last tab of a context removes the context.
+    // Does nothing when aTab is not one of Tabs.
+    procedure RemoveTab(aTab: TRibbonTab);
     // Add a small button to the quick access toolbar (RB-006).
     function AddQuickButton(const aCaption: string; aOnClick: TFresnelEventHandler = nil): TRibbonItem;
+    function IndexOfQuickItem(aItem: TRibbonItem): Integer;
+    // Take a quick access button away and free it. Does nothing when aItem is not one of QuickItems.
+    procedure RemoveQuickItem(aItem: TRibbonItem);
     // Show the KeyTip badges (RB-040).
     procedure ShowKeyTips;
     procedure HideKeyTips;
@@ -654,16 +687,27 @@ begin
 end;
 
 procedure TRibbonItem.Click;
+var
+  lRibbon: TRibbon;
 begin
   if not Enabled then
     Exit;
-  if FKind=rikToggle then
-    Checked:=not Checked;
-  if FKind=rikDropdown then
-    OpenDropdown;
-  inherited Click;
-  if ClosesPopupsOnClick and (FRibbon<>nil) then
-    FRibbon.ItemActivated;
+  // OnClick may remove this item: the ribbon then frees it after EndClick.
+  lRibbon:=FRibbon;
+  if lRibbon<>nil then
+    lRibbon.BeginClick;
+  try
+    if FKind=rikToggle then
+      Checked:=not Checked;
+    if FKind=rikDropdown then
+      OpenDropdown;
+    inherited Click;
+    if ClosesPopupsOnClick and (lRibbon<>nil) then
+      lRibbon.ItemActivated;
+  finally
+    if lRibbon<>nil then
+      lRibbon.EndClick;
+  end;
 end;
 
 { TRibbonSplitButton }
@@ -690,14 +734,24 @@ end;
 { TRibbonGalleryCell }
 
 procedure TRibbonGalleryCell.Click;
+var
+  lRibbon: TRibbon;
 begin
   if not Enabled then
     Exit;
-  if FGallery<>nil then
-    FGallery.SelectedIndex:=FIndex;
-  inherited Click;
-  if (FGallery<>nil) and Assigned(FGallery.FOnSelect) then
-    FGallery.FOnSelect(FGallery,FIndex);
+  lRibbon:=Ribbon;
+  if lRibbon<>nil then
+    lRibbon.BeginClick;
+  try
+    if FGallery<>nil then
+      FGallery.SelectedIndex:=FIndex;
+    inherited Click;
+    if (FGallery<>nil) and Assigned(FGallery.FOnSelect) then
+      FGallery.FOnSelect(FGallery,FIndex);
+  finally
+    if lRibbon<>nil then
+      lRibbon.EndClick;
+  end;
 end;
 
 { TRibbonGallery }
@@ -865,12 +919,14 @@ begin
   end;
   lOverlay:=TOverlayLayer.GetLayer(Viewport).Open(FPopup,ViewportRect(Self));
   lOverlay.OnClose:=@PopupClosed;
+  FPopupOverlay:=lOverlay;
 end;
 
 procedure TRibbonGallery.PopupClosed(Sender: TObject);
 begin
   // FPopup may hold the clicked cell, so it is freed by the next OpenExpanded.
-  if Sender=nil then ;
+  if Sender=FPopupOverlay then
+    FPopupOverlay:=nil;
 end;
 
 { TRibbonGroup }
@@ -1013,6 +1069,40 @@ begin
   AddElement(aControl,risMedium,risMedium);
 end;
 
+function TRibbonGroup.IndexOfItem(aItem: TFresnelElement): Integer;
+begin
+  Result:=FItems.IndexOf(aItem);
+end;
+
+procedure TRibbonGroup.RemoveItem(aItem: TFresnelElement);
+var
+  lIndex: Integer;
+begin
+  lIndex:=IndexOfItem(aItem);
+  if lIndex>=0 then
+    RemoveItemAt(lIndex);
+end;
+
+procedure TRibbonGroup.RemoveItemAt(aIndex: Integer);
+var
+  lElement: TFresnelElement;
+  i: Integer;
+begin
+  lElement:=Items[aIndex]; // raises on a bad index
+  FRibbon.BeforeRemove;
+  FItems.Delete(aIndex);
+  for i:=aIndex to High(FPreferred)-1 do
+  begin
+    FPreferred[i]:=FPreferred[i+1];
+    FMinimum[i]:=FMinimum[i+1];
+  end;
+  SetLength(FPreferred,FItems.Count);
+  SetLength(FMinimum,FItems.Count);
+  FRibbon.ReleaseElement(lElement);
+  FBuiltLevel:=-1;
+  FTab.InvalidateLayout;
+end;
+
 procedure TRibbonGroup.ArrangeBody(aLevel: Integer);
 var
   i: Integer;
@@ -1141,6 +1231,8 @@ begin
 end;
 
 procedure TRibbonTabHeader.Click;
+var
+  lRibbon: TRibbon;
 begin
   if not Enabled then
     Exit;
@@ -1150,10 +1242,16 @@ begin
     FIgnoreClick:=False;
     Exit;
   end;
-  FTab.FRibbon.ActiveTab:=FTab;
-  if FTab.FRibbon.Collapsed then
-    FTab.FRibbon.OpenPanelPopup;
-  inherited Click;
+  lRibbon:=FTab.FRibbon;
+  lRibbon.BeginClick;
+  try
+    lRibbon.ActiveTab:=FTab;
+    if lRibbon.Collapsed then
+      lRibbon.OpenPanelPopup;
+    inherited Click;
+  finally
+    lRibbon.EndClick;
+  end;
 end;
 
 procedure TRibbonTabHeader.DoubleClicked(aEvent: TAbstractEvent);
@@ -1226,6 +1324,25 @@ begin
   Result:=TRibbonGroup.CreateFor(Self,aCaption);
   Result.Parent:=Self;
   FGroups.Add(Result);
+  InvalidateLayout;
+end;
+
+function TRibbonTab.IndexOfGroup(aGroup: TRibbonGroup): Integer;
+begin
+  Result:=FGroups.IndexOf(aGroup);
+end;
+
+procedure TRibbonTab.RemoveGroup(aGroup: TRibbonGroup);
+var
+  lIndex: Integer;
+begin
+  lIndex:=IndexOfGroup(aGroup);
+  if lIndex<0 then
+    Exit;
+  FRibbon.BeforeRemove;
+  FGroups.Delete(lIndex);
+  FRibbon.ReleaseGroup(aGroup);
+  FRibbon.Discard(aGroup); // may free it at once
   InvalidateLayout;
 end;
 
@@ -1306,6 +1423,7 @@ begin
   FQuickItems:=TFPList.Create;
   FBadges:=TFPList.Create;
   FBadgeOverlays:=TFPList.Create;
+  FDiscarded:=TFPList.Create;
   FContextLabels:=TStringList.Create;
   FVisibleContexts:=TStringList.Create;
   FKeyTipKey:='F6';
@@ -1333,6 +1451,11 @@ end;
 
 destructor TRibbon.Destroy;
 begin
+  if FFreeQueued and (Application<>nil) then
+    Application.RemoveAsyncCalls(Self);
+  FFreeQueued:=False;
+  FreeDiscarded;
+  FreeAndNil(FDiscarded);
   RemoveKeyListeners;
   FreeAndNil(FBadgeOverlays);
   FreeAndNil(FBadges);
@@ -1361,8 +1484,13 @@ end;
 procedure TRibbon.Notification(aComponent: TComponent; aOperation: TOperation);
 begin
   inherited Notification(aComponent,aOperation);
-  if (aOperation=opRemove) and (aComponent=FKeyViewport) then
+  if aOperation<>opRemove then
+    Exit;
+  if aComponent=FKeyViewport then
     FKeyViewport:=nil;
+  // A discarded element freed by someone else, or with an element freed before it.
+  if FDiscarded<>nil then
+    FDiscarded.Remove(aComponent);
 end;
 
 function TRibbon.Layer: TOverlayLayer;
@@ -1535,6 +1663,195 @@ end;
 procedure TRibbon.UpdateTitleRow;
 begin
   SetClass(FTitleRow,cRibbonHiddenClass,(FQuickItems.Count=0) and (FVisibleContexts.Count=0));
+end;
+
+function TRibbon.IndexOfQuickItem(aItem: TRibbonItem): Integer;
+begin
+  Result:=FQuickItems.IndexOf(aItem);
+end;
+
+procedure TRibbon.RemoveQuickItem(aItem: TRibbonItem);
+var
+  lIndex: Integer;
+begin
+  lIndex:=IndexOfQuickItem(aItem);
+  if lIndex<0 then
+    Exit;
+  BeforeRemove;
+  FQuickItems.Delete(lIndex);
+  Discard(aItem);
+  UpdateTitleRow;
+  DomChanged;
+end;
+
+function TRibbon.IndexOfTab(aTab: TRibbonTab): Integer;
+begin
+  Result:=FTabs.IndexOf(aTab);
+end;
+
+procedure TRibbon.RemoveTab(aTab: TRibbonTab);
+var
+  lIndex, i: Integer;
+  lNext: TRibbonTab;
+  lContext: string;
+begin
+  lIndex:=IndexOfTab(aTab);
+  if lIndex<0 then
+    Exit;
+  BeforeRemove;
+  if aTab=FActiveTab then
+  begin
+    // The neighbour on the right, else the one on the left.
+    lNext:=nil;
+    for i:=lIndex+1 to TabCount-1 do
+      if Tabs[i].TabVisible then
+      begin
+        lNext:=Tabs[i];
+        Break;
+      end;
+    if lNext=nil then
+      for i:=lIndex-1 downto 0 do
+        if Tabs[i].TabVisible then
+        begin
+          lNext:=Tabs[i];
+          Break;
+        end;
+    SetActiveTab(lNext);
+  end;
+  FTabs.Delete(lIndex);
+  lContext:=aTab.ContextName;
+  for i:=0 to aTab.GroupCount-1 do
+    ReleaseGroup(aTab.Groups[i]);
+  Discard(aTab.Header);
+  Discard(aTab); // may free it at once
+  if lContext<>'' then
+    DropUnusedContext(lContext);
+  UpdateTitleRow;
+  DomChanged;
+end;
+
+procedure TRibbon.DropUnusedContext(const aContextName: string);
+var
+  i: Integer;
+begin
+  for i:=0 to TabCount-1 do
+    if Tabs[i].ContextName=aContextName then
+      Exit;
+  i:=FContextLabels.IndexOf(aContextName);
+  if i>=0 then
+  begin
+    Discard(TLabel(FContextLabels.Objects[i]));
+    FContextLabels.Delete(i);
+  end;
+  i:=FVisibleContexts.IndexOf(aContextName);
+  if i>=0 then
+    FVisibleContexts.Delete(i);
+end;
+
+procedure TRibbon.BeginClick;
+begin
+  Inc(FClickDepth);
+end;
+
+procedure TRibbon.EndClick;
+begin
+  Dec(FClickDepth);
+  if (FClickDepth=0) and (FDiscarded.Count>0) then
+    ScheduleFree;
+end;
+
+procedure TRibbon.BeforeRemove;
+begin
+  // The KeyTips may point at what goes.
+  HideKeyTips;
+end;
+
+procedure TRibbon.Discard(aElement: TFresnelElement);
+begin
+  if aElement=nil then
+    Exit;
+  aElement.Parent:=nil;
+  if FDiscarded.IndexOf(aElement)<0 then
+  begin
+    FDiscarded.Add(aElement);
+    if aElement.Owner<>Self then
+      aElement.FreeNotification(Self);
+  end;
+  ScheduleFree;
+end;
+
+procedure TRibbon.ReleaseElement(aElement: TFresnelElement);
+var
+  lGallery: TRibbonGallery;
+begin
+  if aElement is TRibbonGallery then
+  begin
+    lGallery:=TRibbonGallery(aElement);
+    if lGallery.FPopupOverlay<>nil then
+      lGallery.FPopupOverlay.Close;
+    lGallery.FPopupOverlay:=nil;
+    Discard(lGallery.FPopup);
+    lGallery.FPopup:=nil;
+  end;
+  Discard(aElement);
+end;
+
+procedure TRibbon.ReleaseGroup(aGroup: TRibbonGroup);
+var
+  i: Integer;
+  lColumn: TDiv;
+begin
+  // The popup of a collapsed group holds the body: put it back first.
+  if aGroup.FPopup<>nil then
+    aGroup.FPopup.Close;
+  for i:=0 to aGroup.ItemCount-1 do
+    if aGroup.Items[i] is TRibbonGallery then
+      ReleaseElement(aGroup.Items[i]);
+  // Columns not in use are outside the group's tree.
+  for i:=0 to aGroup.FColumns.Count-1 do
+  begin
+    lColumn:=TDiv(aGroup.FColumns[i]);
+    if lColumn.Parent=nil then
+      Discard(lColumn);
+  end;
+end;
+
+procedure TRibbon.ScheduleFree;
+begin
+  if FClickDepth>0 then
+    Exit; // EndClick comes back here
+  if (Application<>nil) and (Application.AsyncCalls<>nil) then
+  begin
+    // Even outside a ribbon click an event may still be running for what goes.
+    if not FFreeQueued then
+    begin
+      FFreeQueued:=True;
+      Application.QueueAsyncCall(@FreeDiscardedAsync,nil);
+    end;
+  end
+  else
+    FreeDiscarded;
+end;
+
+procedure TRibbon.FreeDiscardedAsync(aData: Pointer);
+begin
+  if aData=nil then ;
+  FFreeQueued:=False;
+  FreeDiscarded;
+end;
+
+procedure TRibbon.FreeDiscarded;
+var
+  lElement: TFresnelElement;
+begin
+  if FDiscarded=nil then
+    Exit;
+  while FDiscarded.Count>0 do
+  begin
+    lElement:=TFresnelElement(FDiscarded[FDiscarded.Count-1]);
+    FDiscarded.Delete(FDiscarded.Count-1);
+    lElement.Free;
+  end;
 end;
 
 procedure TRibbon.UpdatePanelVisibility;
@@ -1756,6 +2073,8 @@ var
 begin
   if (aElement is TCustomButton) and not TCustomButton(aElement).Enabled then
     Exit;
+  if aElement.HasCSSClass(cRibbonHiddenClass) then
+    Exit;
   lCount:=Length(FKeyElements);
   SetLength(FKeyElements,lCount+1);
   FKeyElements[lCount]:=aElement;
@@ -1781,12 +2100,16 @@ begin
     for g:=0 to FActiveTab.GroupCount-1 do
     begin
       lGroup:=FActiveTab.Groups[g];
+      if lGroup.HasCSSClass(cRibbonHiddenClass) then
+        Continue;
       if lGroup.Collapsed then
         AddKeyElement(lGroup.CollapsedButton)
       else
         for k:=0 to lGroup.ItemCount-1 do
         begin
           lElement:=lGroup.Items[k];
+          if lElement.HasCSSClass(cRibbonHiddenClass) then
+            Continue;
           if lElement is TRibbonItem then
             AddKeyElement(lElement)
           else if lElement is TRibbonSplitButton then

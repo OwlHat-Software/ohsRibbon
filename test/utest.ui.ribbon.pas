@@ -10,13 +10,30 @@ uses
   ohsribbon.model.sizing, ohsribbon.ui.ribbon;
 
 type
+  { TFreeWatch - tells whether a component was freed. }
+
+  TFreeWatch = class(TComponent)
+  private
+    FFreed: TFPList;
+  protected
+    procedure Notification(aComponent: TComponent; aOperation: TOperation); override;
+  public
+    constructor Create(aOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure Watch(aComponent: TComponent);
+    function Freed(aComponent: TComponent): Boolean;
+  end;
+
   TTestRibbon = class(TCustomTestFresnelCSS)
   private
     FRibbon: TRibbon;
     FClicks: Integer;
     FSelected: Integer;
     FTabChanges: Integer;
+    FRemoveGroup: TRibbonGroup;
+    FRemoveItem: TRibbonItem;
     procedure ItemClick(aEvent: TAbstractEvent);
+    procedure RemoveOnClick(aEvent: TAbstractEvent);
     procedure GallerySelect(Sender: TRibbonGallery; aIndex: Integer);
     procedure TabChanged(Sender: TObject);
     procedure Build(aWidth: Integer);
@@ -63,14 +80,64 @@ type
     procedure TestKeyboardF6ShowsKeyTips;
     procedure TestKeyboardLetterAndEscape;
     procedure TestEscapeOutsideKeyTipsIsNotConsumed;
+    // Removing (issue 00001)
+    procedure TestRemoveItemKeepsSizesInStep;
+    procedure TestRemoveGalleryClosesItsPopup;
+    procedure TestRemoveGroupFreesEverything;
+    procedure TestRemoveCollapsedGroupWithOpenPopup;
+    procedure TestRemoveActiveTabActivatesNeighbour;
+    procedure TestRemoveLastContextualTabDropsContext;
+    procedure TestRemoveQuickItemHidesTitleRow;
+    procedure TestRemoveItemFromItsOwnClick;
+    procedure TestRemoveHidesKeyTips;
+    procedure TestRemoveUnknownDoesNothing;
+    procedure TestKeyTipsSkipHidden;
   end;
 
 implementation
+
+{ TFreeWatch }
+
+constructor TFreeWatch.Create(aOwner: TComponent);
+begin
+  inherited Create(aOwner);
+  FFreed:=TFPList.Create;
+end;
+
+destructor TFreeWatch.Destroy;
+begin
+  FreeAndNil(FFreed);
+  inherited Destroy;
+end;
+
+procedure TFreeWatch.Notification(aComponent: TComponent; aOperation: TOperation);
+begin
+  inherited Notification(aComponent,aOperation);
+  if (aOperation=opRemove) and (FFreed<>nil) then
+    FFreed.Add(aComponent);
+end;
+
+procedure TFreeWatch.Watch(aComponent: TComponent);
+begin
+  aComponent.FreeNotification(Self);
+end;
+
+function TFreeWatch.Freed(aComponent: TComponent): Boolean;
+begin
+  Result:=FFreed.IndexOf(aComponent)>=0;
+end;
 
 procedure TTestRibbon.ItemClick(aEvent: TAbstractEvent);
 begin
   if aEvent=nil then ;
   Inc(FClicks);
+end;
+
+procedure TTestRibbon.RemoveOnClick(aEvent: TAbstractEvent);
+begin
+  if aEvent=nil then ;
+  Inc(FClicks);
+  FRemoveGroup.RemoveItem(FRemoveItem);
 end;
 
 procedure TTestRibbon.GallerySelect(Sender: TRibbonGallery; aIndex: Integer);
@@ -762,6 +829,287 @@ begin
   // The next ordinary click works again.
   lTab.Header.Click;
   AssertTrue(FRibbon.PanelOpen);
+end;
+
+// Every element of the ribbon is owned by it, so a count back to the one before adding shows that
+// removing freed everything, also what is outside the element tree. A group keeps the columns it
+// once needed for reuse, so for items the tests watch the removed elements instead.
+
+procedure TTestRibbon.TestRemoveItemKeepsSizesInStep;
+var
+  lGroup: TRibbonGroup;
+  lA, lB, lC: TRibbonItem;
+  lWatch: TFreeWatch;
+begin
+  Build(3000);
+  lWatch:=TFreeWatch.Create(nil);
+  try
+    lGroup:=FRibbon.AddTab('One').AddGroup('G');
+    lA:=lGroup.AddButton('A',risSmall);
+    lB:=lGroup.AddButton('B',risLarge);
+    lC:=lGroup.AddButton('C',risSmall);
+    lWatch.Watch(lB);
+    lWatch.Watch(lC);
+    Settle;
+    AssertTrue('the large one splits the small ones',lA.Parent<>lC.Parent);
+    lGroup.RemoveItem(lB);
+    AssertTrue(lWatch.Freed(lB));
+    Settle;
+    AssertEquals(2,lGroup.ItemCount);
+    AssertSame(lA,lGroup.Items[0]);
+    AssertSame(lC,lGroup.Items[1]);
+    AssertEquals(-1,lGroup.IndexOfItem(lB));
+    AssertSame('two small ones share a column again',lA.Parent,lC.Parent);
+    lGroup.RemoveItemAt(1);
+    AssertTrue(lWatch.Freed(lC));
+    Settle;
+    AssertEquals(1,lGroup.ItemCount);
+  finally
+    lWatch.Free;
+  end;
+end;
+
+procedure TTestRibbon.TestRemoveGalleryClosesItsPopup;
+var
+  lGroup: TRibbonGroup;
+  lGallery: TRibbonGallery;
+  lSplit: TRibbonSplitButton;
+  lArrow: TRibbonItem;
+  lPopup: TFresnelElement;
+  lWatch: TFreeWatch;
+  i: Integer;
+begin
+  Build(3000);
+  lWatch:=TFreeWatch.Create(nil);
+  try
+    lGroup:=FRibbon.AddTab('One').AddGroup('G');
+    lSplit:=lGroup.AddSplitButton('Paste',risLarge,@ItemClick);
+    lArrow:=lSplit.Arrow;
+    lGallery:=lGroup.AddGallery(2);
+    for i:=1 to 5 do
+      lGallery.AddItem('Item '+IntToStr(i));
+    Settle;
+    lGallery.MoreButton.Click;
+    AssertEquals(1,OverlayCount);
+    lPopup:=TOverlayLayer.GetLayer(Viewport).Overlays[0].Content;
+    lWatch.Watch(lGallery);
+    lWatch.Watch(lPopup);
+    lWatch.Watch(lSplit);
+    lWatch.Watch(lArrow);
+    lGroup.RemoveItem(lGallery);
+    AssertEquals('the expanded view goes with it',0,OverlayCount);
+    AssertTrue(lWatch.Freed(lGallery));
+    AssertTrue('the expanded view is freed too',lWatch.Freed(lPopup));
+    lGroup.RemoveItem(lSplit);
+    AssertTrue(lWatch.Freed(lSplit));
+    AssertTrue('the parts of a split button go with it',lWatch.Freed(lArrow));
+    Settle;
+    AssertEquals(0,lGroup.ItemCount);
+  finally
+    lWatch.Free;
+  end;
+end;
+
+procedure TTestRibbon.TestRemoveGroupFreesEverything;
+var
+  lTab: TRibbonTab;
+  lKeep, lGroup: TRibbonGroup;
+  lCount, i: Integer;
+begin
+  Build(3000);
+  lTab:=FRibbon.AddTab('One');
+  lKeep:=lTab.AddGroup('Keep');
+  lKeep.AddButton('A');
+  Settle;
+  lCount:=FRibbon.ComponentCount;
+  lGroup:=lTab.AddGroup('Plugin');
+  for i:=1 to 6 do
+    lGroup.AddButton('Small '+IntToStr(i),risSmall);
+  lGroup.OnDialogLauncher:=@ItemClick;
+  // Wide, then narrow: the group builds columns at several levels.
+  Settle;
+  Viewport.Width:=150;
+  Settle;
+  Viewport.Width:=3000;
+  Settle;
+  lTab.RemoveGroup(lGroup);
+  Settle;
+  AssertEquals(1,lTab.GroupCount);
+  AssertSame(lKeep,lTab.Groups[0]);
+  AssertEquals(-1,lTab.IndexOfGroup(lGroup));
+  AssertEquals(lCount,FRibbon.ComponentCount);
+end;
+
+procedure TTestRibbon.TestRemoveCollapsedGroupWithOpenPopup;
+var
+  lTab: TRibbonTab;
+  lGroup: TRibbonGroup;
+begin
+  Build(120);
+  lTab:=FRibbon.AddTab('One');
+  FillTab(lTab);
+  Settle;
+  lGroup:=lTab.Groups[3];
+  lGroup.CollapsedButton.Click;
+  AssertEquals(1,OverlayCount);
+  lTab.RemoveGroup(lGroup);
+  AssertEquals(0,OverlayCount);
+  Settle;
+  AssertEquals(3,lTab.GroupCount);
+end;
+
+procedure TTestRibbon.TestRemoveActiveTabActivatesNeighbour;
+var
+  lOne, lTwo, lThree: TRibbonTab;
+  lCount: Integer;
+begin
+  Build(1000);
+  lCount:=FRibbon.ComponentCount;
+  lOne:=FRibbon.AddTab('One');
+  lTwo:=FRibbon.AddTab('Two');
+  lThree:=FRibbon.AddTab('Three');
+  FillTab(lTwo);
+  FRibbon.ActiveTab:=lTwo;
+  Settle;
+  FRibbon.OnTabChanged:=@TabChanged;
+  FRibbon.RemoveTab(lTwo);
+  AssertSame('the right neighbour',lThree,FRibbon.ActiveTab);
+  AssertEquals(1,FTabChanges);
+  AssertFalse(lThree.HasCSSClass(cRibbonHiddenClass));
+  AssertTrue(lThree.Header.HasCSSClass(cRibbonActiveClass));
+  FRibbon.RemoveTab(lThree);
+  AssertSame('the left one when there is none on the right',lOne,FRibbon.ActiveTab);
+  FRibbon.RemoveTab(lOne);
+  AssertNull(FRibbon.ActiveTab);
+  AssertEquals(0,FRibbon.TabCount);
+  Settle;
+  AssertEquals(lCount,FRibbon.ComponentCount);
+end;
+
+procedure TTestRibbon.TestRemoveLastContextualTabDropsContext;
+var
+  lOne, lFormat, lLayout: TRibbonTab;
+  lCount: Integer;
+begin
+  Build(1000);
+  lOne:=FRibbon.AddTab('One');
+  Settle;
+  lCount:=FRibbon.ComponentCount;
+  lFormat:=FRibbon.AddContextualTab('Picture','Format');
+  lLayout:=FRibbon.AddContextualTab('Picture','Layout');
+  FRibbon.SetContextVisible('Picture',True);
+  FRibbon.ActiveTab:=lFormat;
+  FRibbon.RemoveTab(lFormat);
+  AssertSame(lLayout,FRibbon.ActiveTab);
+  AssertTrue('a tab of the context is left',FRibbon.IsContextVisible('Picture'));
+  FRibbon.RemoveTab(lLayout);
+  AssertSame(lOne,FRibbon.ActiveTab);
+  AssertFalse(FRibbon.IsContextVisible('Picture'));
+  AssertTrue('nothing left for the title row',FRibbon.Nodes[0].HasCSSClass(cRibbonHiddenClass));
+  Settle;
+  AssertEquals(lCount,FRibbon.ComponentCount);
+end;
+
+procedure TTestRibbon.TestRemoveQuickItemHidesTitleRow;
+var
+  lSave, lUndo: TRibbonItem;
+  lCount: Integer;
+begin
+  Build(1000);
+  FRibbon.AddTab('One');
+  Settle;
+  lCount:=FRibbon.ComponentCount;
+  lSave:=FRibbon.AddQuickButton('Save');
+  lUndo:=FRibbon.AddQuickButton('Undo');
+  FRibbon.RemoveQuickItem(lSave);
+  AssertEquals(1,FRibbon.QuickItemCount);
+  AssertSame(lUndo,FRibbon.QuickItems[0]);
+  AssertFalse(FRibbon.Nodes[0].HasCSSClass(cRibbonHiddenClass));
+  FRibbon.RemoveQuickItem(lUndo);
+  AssertEquals(0,FRibbon.QuickItemCount);
+  AssertTrue(FRibbon.Nodes[0].HasCSSClass(cRibbonHiddenClass));
+  AssertEquals(lCount,FRibbon.ComponentCount);
+end;
+
+procedure TTestRibbon.TestRemoveItemFromItsOwnClick;
+var
+  lWatch: TFreeWatch;
+begin
+  Build(1000);
+  lWatch:=TFreeWatch.Create(nil);
+  try
+    FRemoveGroup:=FRibbon.AddTab('One').AddGroup('G');
+    FRemoveItem:=FRemoveGroup.AddToggle('Unload',risLarge,@RemoveOnClick);
+    lWatch.Watch(FRemoveItem);
+    Settle;
+    FRemoveItem.Click;
+    AssertEquals(1,FClicks);
+    AssertEquals(0,FRemoveGroup.ItemCount);
+    AssertTrue('freed once the click is over',lWatch.Freed(FRemoveItem));
+    Settle;
+  finally
+    lWatch.Free;
+  end;
+end;
+
+procedure TTestRibbon.TestRemoveHidesKeyTips;
+var
+  lGroup: TRibbonGroup;
+  lItem: TRibbonItem;
+begin
+  Build(3000);
+  lGroup:=FRibbon.AddTab('Home').AddGroup('G');
+  lGroup.AddButton('Open',risLarge);
+  lItem:=lGroup.AddButton('Close',risLarge);
+  Settle;
+  FRibbon.ShowKeyTips;
+  Settle;
+  AssertTrue(FRibbon.PressKeyTip('H'));
+  Settle;
+  AssertEquals(2,FRibbon.BadgeCount);
+  lGroup.RemoveItem(lItem);
+  AssertFalse(FRibbon.KeyTipsActive);
+  AssertEquals(0,FRibbon.BadgeCount);
+  AssertEquals(0,OverlayCount);
+end;
+
+procedure TTestRibbon.TestRemoveUnknownDoesNothing;
+var
+  lTab: TRibbonTab;
+  lGroup: TRibbonGroup;
+  lItem: TRibbonItem;
+begin
+  Build(1000);
+  lTab:=FRibbon.AddTab('One');
+  lGroup:=lTab.AddGroup('G');
+  lItem:=lGroup.AddButton('A');
+  lGroup.RemoveItem(nil);
+  lTab.AddGroup('Other').RemoveItem(lItem);
+  lTab.RemoveGroup(nil);
+  FRibbon.RemoveTab(nil);
+  FRibbon.RemoveQuickItem(lItem);
+  AssertEquals(1,lGroup.ItemCount);
+  AssertEquals(2,lTab.GroupCount);
+  AssertEquals(1,FRibbon.TabCount);
+end;
+
+procedure TTestRibbon.TestKeyTipsSkipHidden;
+var
+  lGroup: TRibbonGroup;
+begin
+  Build(3000);
+  lGroup:=FRibbon.AddTab('Home').AddGroup('G');
+  lGroup.AddButton('Open',risLarge);
+  lGroup.AddButton('Close',risLarge).AddCSSClass(cRibbonHiddenClass);
+  FRibbon.AddTab('Hidden').Header.AddCSSClass(cRibbonHiddenClass);
+  FRibbon.AddQuickButton('Save').AddCSSClass(cRibbonHiddenClass);
+  Settle;
+  FRibbon.ShowKeyTips;
+  Settle;
+  AssertEquals('file and home',2,FRibbon.BadgeCount);
+  AssertTrue(FRibbon.PressKeyTip('H'));
+  Settle;
+  AssertEquals('only the shown button',1,FRibbon.BadgeCount);
 end;
 
 initialization

@@ -9,6 +9,7 @@
 | WP-3.2 | KeyTips (RB-040) | Tests pass; visible in the demo | Done |
 | WP-4.1 | Light and dark look on both targets (RB-050, RB-NFR-100) | Demo checked in both looks, both targets | Done |
 | WP-5.1 | Title bar as a component (RB-009) | Tests pass; moved, resized, maximized, minimized and closed by mouse on both platforms | Done on Windows, on Linux with X11, and by hand under Wayland in WSL |
+| WP-5.2 | Removing items, groups, tabs and quick access buttons (RB-010, issue 00001) | Tests pass on both platforms | Done |
 
 ## Changes needed in Fresnel
 

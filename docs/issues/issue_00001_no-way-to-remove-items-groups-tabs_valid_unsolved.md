@@ -90,3 +90,27 @@ row hide.
 As `TOhsRibbonAdapter` does today: hide the element with `cRibbonHiddenClass`, cut its `OnClick`, hide the
 group or tab header when nothing visible is left, and reuse them when the same item comes back. Once the
 fix is in, the adapter's `Remove` and `TidyUp` can call the new methods instead.
+
+## Checked
+
+Valid, not fixed. Checked on 2026-11-10 against `src/ohsribbon.ui.ribbon.pas` at `2c48866`, by reading the
+code; no run-time reproduction was needed for a missing method.
+
+- Confirmed: no public method removes anything. `TRibbonGroup` only adds to `FItems`, `FPreferred` and
+  `FMinimum` (`AddElement`, line 952); `TRibbonTab` only adds to `FGroups` (`AddGroup`, line 1224);
+  `TRibbon` only adds to `FTabs` and `FQuickItems` (lines 1436, 1445, 1531). The only `Remove...`
+  methods are the internal `RemoveKeyListeners` and `RemoveBadges`.
+- Confirmed: freeing an item leaves it in `FItems`. Nothing registers a free notification for items, and
+  `ArrangeBody` (line 1038) and `CollectKeyLevel` (line 1789) read `FItems` directly.
+- Confirmed: a hidden item still counts in the layout. `ArrangeBody` passes every entry of `FPreferred`
+  and `FMinimum` to `ReducedSizes` and `PackColumns`, so a hidden large button still takes a column slot
+  and still decides how far the group shrinks.
+- Found as well, and it affects the workaround: key tips ignore `cRibbonHiddenClass`.
+  `CollectKeyLevel` (line 1764) adds every quick item, every group item and every tab header whose context
+  is visible; `AddKeyElement` skips only disabled buttons. So a hidden plugin button or hidden tab header
+  still gets a key tip letter and a badge. Until the fix is in, the adapter can also set `Enabled:=False`
+  on what it hides, which keeps it out of the key tips.
+- `UpdateTitleRow` (line 1537) tests only `FQuickItems.Count`, as the issue says.
+
+The suggested fix is a sound starting point. The fix should also make `CollectKeyLevel` skip hidden
+elements.
